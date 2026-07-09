@@ -88,6 +88,17 @@ h1 {
   background: var(--panel);
 }
 
+.window-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.minimize-button {
+  display: none;
+}
+
 .icon-button:hover,
 .icon-button:focus-visible,
 .secondary-button:hover,
@@ -289,6 +300,35 @@ h1 {
 
 .is-popup #popup-button {
   display: none;
+}
+
+.is-popup .minimize-button {
+  display: inline-grid;
+}
+
+.is-minimized {
+  min-width: 240px;
+  min-height: 150px;
+}
+
+.is-popup.is-minimized .app {
+  max-width: 280px;
+}
+
+.is-popup.is-minimized .timer-panel {
+  border-color: transparent;
+  background: transparent;
+}
+
+.is-popup.is-minimized .mode-tabs,
+.is-popup.is-minimized .timer-form,
+.is-popup.is-minimized .control-row {
+  display: none;
+}
+
+.is-popup.is-minimized .time-display {
+  padding: 14px 8px 12px;
+  font-size: clamp(2.5rem, 22vw, 3.4rem);
 }
 
 @keyframes flash {

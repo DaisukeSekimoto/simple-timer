@@ -14,9 +14,14 @@
           <h1 id="app-title">Simple Timer</h1>
           <p id="status-text" class="status-text" aria-live="polite">待機中</p>
         </div>
-        <button id="popup-button" class="icon-button" type="button" aria-label="小窓で開く" title="小窓で開く">
-          <span aria-hidden="true">□</span>
-        </button>
+        <div class="window-actions">
+          <button id="minimize-button" class="icon-button minimize-button" type="button" aria-label="最小化" title="最小化">
+            <span aria-hidden="true">−</span>
+          </button>
+          <button id="popup-button" class="icon-button" type="button" aria-label="小窓で開く" title="小窓で開く">
+            <span aria-hidden="true">□</span>
+          </button>
+        </div>
       </header>
 
       <section class="timer-panel" aria-label="タイマー">

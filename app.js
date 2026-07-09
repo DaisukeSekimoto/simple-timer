@@ -15,6 +15,7 @@
     statusText: document.querySelector("#status-text"),
     timeDisplay: document.querySelector("#time-display"),
     popupButton: document.querySelector("#popup-button"),
+    minimizeButton: document.querySelector("#minimize-button"),
     modeTabs: Array.from(document.querySelectorAll(".mode-tab")),
     countdownSettings: document.querySelector("#countdown-settings"),
     hoursInput: document.querySelector("#hours-input"),
@@ -35,6 +36,7 @@
     countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
     taskName: "",
     finishedAt: 0,
+    isMinimized: false,
   };
 
   let tickId = 0;
@@ -131,6 +133,14 @@
     return `${task} ${label}: ${formatTime(elapsed, "floor")}`;
   }
 
+  function getCurrentBody() {
+    return elements.app.ownerDocument.body;
+  }
+
+  function isPopupContext() {
+    return getCurrentBody().classList.contains("is-popup");
+  }
+
   function updateModeUi() {
     elements.modeTabs.forEach((tab) => {
       const isActive = tab.dataset.mode === state.mode;
@@ -169,6 +179,10 @@
     elements.timeDisplay.textContent = formatTime(getDisplayMs(), rounding);
     elements.startPauseButton.textContent = state.isRunning ? "一時停止" : "開始";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
+    getCurrentBody().classList.toggle("is-minimized", state.isMinimized && isPopupContext());
+    elements.minimizeButton.setAttribute("aria-label", state.isMinimized ? "復元" : "最小化");
+    elements.minimizeButton.setAttribute("title", state.isMinimized ? "復元" : "最小化");
+    elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "□" : "−";
     updateModeUi();
     updateStatus();
   }
@@ -325,6 +339,28 @@
     }
   }
 
+  function resizePopup(width, height) {
+    if (!isPopupContext()) {
+      return;
+    }
+
+    try {
+      elements.app.ownerDocument.defaultView.resizeTo(width, height);
+    } catch {
+      // Window resizing is optional and browser-controlled.
+    }
+  }
+
+  function toggleMinimized() {
+    if (!isPopupContext()) {
+      return;
+    }
+
+    state.isMinimized = !state.isMinimized;
+    resizePopup(state.isMinimized ? 280 : 360, state.isMinimized ? 190 : 520);
+    render();
+  }
+
   async function openDocumentPictureInPicture() {
     const pip = window.documentPictureInPicture;
     if (!pip || typeof pip.requestWindow !== "function") {
@@ -342,8 +378,10 @@
       pipWindow.document.body.append(elements.app);
       pipWindow.document.addEventListener("keydown", handleKeyboard);
       pipWindow.addEventListener("pagehide", () => {
+        state.isMinimized = false;
         document.body.classList.toggle("is-popup", new URLSearchParams(window.location.search).has("popup"));
         document.body.append(elements.app);
+        render();
       });
       elements.statusText.textContent = "最前面小窓を開きました";
       return true;
@@ -409,6 +447,7 @@
     elements.resetButton.addEventListener("click", resetTimer);
     elements.copyButton.addEventListener("click", copySummary);
     elements.popupButton.addEventListener("click", openCompactWindow);
+    elements.minimizeButton.addEventListener("click", toggleMinimized);
     document.addEventListener("keydown", handleKeyboard);
   }
 
