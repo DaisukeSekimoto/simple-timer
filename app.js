@@ -63,6 +63,7 @@
 
   let tickId = 0;
   let toastId = 0;
+  let timerPointerHandledAt = 0;
   let audioContext = null;
   let pendingRecordAfterTaskInput = false;
 
@@ -231,6 +232,26 @@
     state.startedAt = 0;
     stopTicking();
     render();
+  }
+
+  function toggleTimer() {
+    if (state.isRunning) {
+      pauseTimer();
+      return;
+    }
+    startTimer();
+  }
+
+  function handleTimerPointerDown(event) {
+    if (!event.isPrimary || event.button !== 0) return;
+    timerPointerHandledAt = now();
+    toggleTimer();
+  }
+
+  function handleTimerClick() {
+    // pointerdownの直後に発生するclickでは同じ操作を二重実行しない。
+    if (now() - timerPointerHandledAt < 500) return;
+    toggleTimer();
   }
 
   function resetTimer() {
@@ -572,7 +593,8 @@
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
     elements.exportHistoryButton.addEventListener("click", exportAllHistory);
     elements.closeDialogButtons.forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
-    elements.startPauseButton.addEventListener("click", () => state.isRunning ? pauseTimer() : startTimer());
+    elements.startPauseButton.addEventListener("pointerdown", handleTimerPointerDown);
+    elements.startPauseButton.addEventListener("click", handleTimerClick);
     elements.resetButton.addEventListener("click", resetTimer);
     elements.nextTaskButton.addEventListener("click", moveToNextTask);
     elements.popupButton.addEventListener("click", openCompactWindow);
