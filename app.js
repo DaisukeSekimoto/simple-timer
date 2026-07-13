@@ -63,6 +63,7 @@
 
   let tickId = 0;
   let toastId = 0;
+  let timerPointerHandledAt = 0;
   let audioContext = null;
   let pendingRecordAfterTaskInput = false;
 
@@ -202,7 +203,11 @@
     elements.recordDate.textContent = formatJapaneseDate();
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
     elements.timeDisplay.textContent = formatTime(getDisplayMs(), state.mode === MODES.COUNTDOWN ? "ceil" : "floor");
-    elements.startPauseButton.textContent = state.isRunning ? "一時停止" : "開始";
+    elements.startPauseButton.textContent = state.isRunning
+      ? "一時停止"
+      : state.elapsedBeforeStartMs > 0
+        ? "再開"
+        : "開始";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
     getCurrentBody().classList.toggle("is-minimized", state.isMinimized && isPopupContext());
     elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "□" : "−";
@@ -231,6 +236,26 @@
     state.startedAt = 0;
     stopTicking();
     render();
+  }
+
+  function toggleTimer() {
+    if (state.isRunning) {
+      pauseTimer();
+      return;
+    }
+    startTimer();
+  }
+
+  function handleTimerPointerDown(event) {
+    if (!event.isPrimary || event.button !== 0) return;
+    timerPointerHandledAt = now();
+    toggleTimer();
+  }
+
+  function handleTimerClick() {
+    // pointerdownの直後に発生するclickでは同じ操作を二重実行しない。
+    if (now() - timerPointerHandledAt < 500) return;
+    toggleTimer();
   }
 
   function resetTimer() {
@@ -324,7 +349,7 @@
   }
 
   function openTaskDialog(recordAfterInput = false) {
-    pendingRecordAfterTaskInput = recordAfterInput;
+    pendingRecordAfterTaskInput = recordAfterInput === true;
     elements.taskInput.value = state.taskName;
     renderRecentTasks();
     elements.taskDialog.showModal();
@@ -529,6 +554,7 @@
       pipWindow.document.head.append(styleLink);
       pipWindow.document.body.className = "is-popup";
       pipWindow.document.body.append(elements.app);
+      pipWindow.document.addEventListener("keydown", handleKeyboard);
       pipWindow.addEventListener("pagehide", () => {
         state.isMinimized = false;
         document.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
@@ -554,7 +580,7 @@
       syncInputsFromDuration(); saveState(); render();
     }));
     elements.presetButtons.forEach((button) => button.addEventListener("click", () => setCountdownDuration(Number.parseInt(button.dataset.seconds, 10))));
-    elements.taskButton.addEventListener("click", openTaskDialog);
+    elements.taskButton.addEventListener("click", () => openTaskDialog(false));
     elements.taskDialogForm.addEventListener("submit", (event) => {
       event.preventDefault();
       setTaskName(elements.taskInput.value);
@@ -572,7 +598,8 @@
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
     elements.exportHistoryButton.addEventListener("click", exportAllHistory);
     elements.closeDialogButtons.forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
-    elements.startPauseButton.addEventListener("click", () => state.isRunning ? pauseTimer() : startTimer());
+    elements.startPauseButton.addEventListener("pointerdown", handleTimerPointerDown);
+    elements.startPauseButton.addEventListener("click", handleTimerClick);
     elements.resetButton.addEventListener("click", resetTimer);
     elements.nextTaskButton.addEventListener("click", moveToNextTask);
     elements.popupButton.addEventListener("click", openCompactWindow);
