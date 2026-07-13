@@ -203,7 +203,11 @@
     elements.recordDate.textContent = formatJapaneseDate();
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
     elements.timeDisplay.textContent = formatTime(getDisplayMs(), state.mode === MODES.COUNTDOWN ? "ceil" : "floor");
-    elements.startPauseButton.textContent = state.isRunning ? "一時停止" : "開始";
+    elements.startPauseButton.textContent = state.isRunning
+      ? "一時停止"
+      : state.elapsedBeforeStartMs > 0
+        ? "再開"
+        : "開始";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
     getCurrentBody().classList.toggle("is-minimized", state.isMinimized && isPopupContext());
     elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "□" : "−";
@@ -345,7 +349,7 @@
   }
 
   function openTaskDialog(recordAfterInput = false) {
-    pendingRecordAfterTaskInput = recordAfterInput;
+    pendingRecordAfterTaskInput = recordAfterInput === true;
     elements.taskInput.value = state.taskName;
     renderRecentTasks();
     elements.taskDialog.showModal();
@@ -550,6 +554,7 @@
       pipWindow.document.head.append(styleLink);
       pipWindow.document.body.className = "is-popup";
       pipWindow.document.body.append(elements.app);
+      pipWindow.document.addEventListener("keydown", handleKeyboard);
       pipWindow.addEventListener("pagehide", () => {
         state.isMinimized = false;
         document.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
@@ -575,7 +580,7 @@
       syncInputsFromDuration(); saveState(); render();
     }));
     elements.presetButtons.forEach((button) => button.addEventListener("click", () => setCountdownDuration(Number.parseInt(button.dataset.seconds, 10))));
-    elements.taskButton.addEventListener("click", openTaskDialog);
+    elements.taskButton.addEventListener("click", () => openTaskDialog(false));
     elements.taskDialogForm.addEventListener("submit", (event) => {
       event.preventDefault();
       setTaskName(elements.taskInput.value);
