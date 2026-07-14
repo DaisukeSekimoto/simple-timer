@@ -66,6 +66,7 @@
   let timerPointerHandledAt = 0;
   let audioContext = null;
   let pendingRecordAfterTaskInput = false;
+  let fitButtonsFrame = 0;
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -195,6 +196,37 @@
     else elements.statusText.textContent = "待機中";
   }
 
+  function isFinishedCountdown() {
+    return state.mode === MODES.COUNTDOWN && state.finishedAt > 0;
+  }
+
+  function fitButtonText(button) {
+    button.style.fontSize = "";
+    if (!button.isConnected || button.offsetParent === null) return;
+
+    const computedStyle = getComputedStyle(button);
+    const maxSize = Number.parseFloat(computedStyle.fontSize) || 16;
+    const minSize = Math.max(10, maxSize * 0.68);
+    let size = maxSize;
+
+    button.style.fontSize = `${size}px`;
+    while (size > minSize && button.scrollWidth > button.clientWidth + 1) {
+      size -= 0.5;
+      button.style.fontSize = `${size}px`;
+    }
+  }
+
+  function fitControlButtonText() {
+    fitButtonText(elements.startPauseButton);
+    fitButtonText(elements.nextTaskButton);
+  }
+
+  function scheduleFitControlButtonText() {
+    const view = elements.app.ownerDocument.defaultView || window;
+    view.cancelAnimationFrame(fitButtonsFrame);
+    fitButtonsFrame = view.requestAnimationFrame(fitControlButtonText);
+  }
+
   function render() {
     if (state.mode === MODES.COUNTDOWN && state.isRunning && getDisplayMs() <= 0) {
       finishCountdown();
@@ -203,16 +235,19 @@
     elements.recordDate.textContent = formatJapaneseDate();
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
     elements.timeDisplay.textContent = formatTime(getDisplayMs(), state.mode === MODES.COUNTDOWN ? "ceil" : "floor");
-    elements.startPauseButton.textContent = state.isRunning
-      ? "一時停止"
-      : state.elapsedBeforeStartMs > 0
-        ? "再開"
-        : "開始";
+    elements.startPauseButton.textContent = isFinishedCountdown()
+      ? "次の作業に移る\n（履歴へ追加）"
+      : state.isRunning
+        ? "一時停止"
+        : state.elapsedBeforeStartMs > 0
+          ? "再開"
+          : "開始";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
     getCurrentBody().classList.toggle("is-minimized", state.isMinimized && isPopupContext());
     elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "□" : "−";
     updateModeUi();
     updateStatus();
+    scheduleFitControlButtonText();
   }
 
   function startTimer() {
@@ -239,6 +274,10 @@
   }
 
   function toggleTimer() {
+    if (isFinishedCountdown()) {
+      moveToNextTask();
+      return;
+    }
     if (state.isRunning) {
       pauseTimer();
       return;
@@ -555,6 +594,7 @@
       pipWindow.document.body.className = "is-popup";
       pipWindow.document.body.append(elements.app);
       pipWindow.document.addEventListener("keydown", handleKeyboard);
+      pipWindow.addEventListener("resize", scheduleFitControlButtonText);
       pipWindow.addEventListener("pagehide", () => {
         state.isMinimized = false;
         document.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
@@ -568,7 +608,10 @@
 
   function handleKeyboard(event) {
     if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.taskDialog.open || elements.historyDialog.open) return;
-    if (event.code === "Space") { event.preventDefault(); state.isRunning ? pauseTimer() : startTimer(); }
+    if (event.code === "Space") {
+      event.preventDefault();
+      isFinishedCountdown() ? moveToNextTask() : state.isRunning ? pauseTimer() : startTimer();
+    }
     else if (event.key.toLowerCase() === "r") resetTimer();
   }
 
@@ -605,6 +648,7 @@
     elements.popupButton.addEventListener("click", openCompactWindow);
     elements.minimizeButton.addEventListener("click", toggleMinimized);
     document.addEventListener("keydown", handleKeyboard);
+    window.addEventListener("resize", scheduleFitControlButtonText);
   }
 
   function initialize() {
