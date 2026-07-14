@@ -28,6 +28,7 @@
     taskDialog: document.querySelector("#task-dialog"),
     taskDialogForm: document.querySelector("#task-dialog-form"),
     recentTaskList: document.querySelector("#recent-task-list"),
+    manualRecentTaskList: document.querySelector("#manual-recent-task-list"),
     historyDialog: document.querySelector("#history-dialog"),
     historyDate: document.querySelector("#history-date"),
     historyList: document.querySelector("#history-list"),
@@ -41,6 +42,10 @@
     manualMinutesInput: document.querySelector("#manual-minutes-input"),
     manualSecondsInput: document.querySelector("#manual-seconds-input"),
     manualHistoryError: document.querySelector("#manual-history-error"),
+    confirmOverlay: document.querySelector("#confirm-overlay"),
+    confirmMessage: document.querySelector("#confirm-message"),
+    cancelDeleteButton: document.querySelector("#cancel-delete-button"),
+    confirmDeleteButton: document.querySelector("#confirm-delete-button"),
     unitButtons: Array.from(document.querySelectorAll(".unit-button")),
     closeDialogButtons: Array.from(document.querySelectorAll(".close-dialog")),
     startPauseButton: document.querySelector("#start-pause-button"),
@@ -67,6 +72,9 @@
   let audioContext = null;
   let pendingRecordAfterTaskInput = false;
   let fitButtonsFrame = 0;
+  let pendingDeleteRecordId = "";
+  let pendingDeleteRecord = null;
+  let confirmPreviousFocus = null;
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -89,13 +97,7 @@
         state.countdownDurationMs = saved.countdownDurationMs;
       }
       if (typeof saved.taskName === "string") state.taskName = saved.taskName.slice(0, 80);
-      const records = JSON.parse(localStorage.getItem(RECORDS_KEY) || "[]");
-      if (Array.isArray(records)) {
-        state.records = records.filter((record) =>
-          record && typeof record.taskName === "string" && typeof record.date === "string" &&
-          Number.isFinite(record.durationMs) && record.durationMs > 0,
-        );
-      }
+      loadRecords();
     } catch {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(RECORDS_KEY);
@@ -112,6 +114,20 @@
 
   function saveRecords() {
     localStorage.setItem(RECORDS_KEY, JSON.stringify(state.records));
+  }
+
+  function loadRecords() {
+    try {
+      const records = JSON.parse(localStorage.getItem(RECORDS_KEY) || "[]");
+      if (!Array.isArray(records)) return;
+      state.records = records.filter((record) =>
+        record && typeof record.taskName === "string" && typeof record.date === "string" &&
+        Number.isFinite(record.durationMs) && record.durationMs > 0,
+      );
+    } catch {
+      localStorage.removeItem(RECORDS_KEY);
+      state.records = [];
+    }
   }
 
   function now() { return Date.now(); }
@@ -367,14 +383,15 @@
     return names.slice(0, 10);
   }
 
-  function renderRecentTasks() {
-    elements.recentTaskList.replaceChildren();
+  function renderRecentTasks(list, input) {
+    loadRecords();
+    list.replaceChildren();
     const names = recentTaskNames();
     if (!names.length) {
       const empty = document.createElement("p");
       empty.className = "empty-message";
       empty.textContent = "履歴はまだありません";
-      elements.recentTaskList.append(empty);
+      list.append(empty);
       return;
     }
     names.forEach((name) => {
@@ -382,15 +399,15 @@
       button.type = "button";
       button.className = "recent-task-button";
       button.textContent = name;
-      button.addEventListener("click", () => { elements.taskInput.value = name; elements.taskInput.focus(); });
-      elements.recentTaskList.append(button);
+      button.addEventListener("click", () => { input.value = name; input.focus(); });
+      list.append(button);
     });
   }
 
   function openTaskDialog(recordAfterInput = false) {
     pendingRecordAfterTaskInput = recordAfterInput === true;
     elements.taskInput.value = state.taskName;
-    renderRecentTasks();
+    renderRecentTasks(elements.recentTaskList, elements.taskInput);
     elements.taskDialog.showModal();
     window.setTimeout(() => elements.taskInput.focus(), 0);
   }
@@ -465,16 +482,44 @@
 
   function deleteHistoryRecord(record) {
     const duration = formatRecordDuration(record.durationMs);
-    if (!window.confirm(`「${record.taskName}（${duration}）」を削除しますか？`)) return;
-    const recordIndex = state.records.findIndex((item) => item === record);
-    if (recordIndex < 0) return;
+    pendingDeleteRecordId = record.id || "";
+    pendingDeleteRecord = record;
+    confirmPreviousFocus = elements.app.ownerDocument.activeElement;
+    elements.confirmMessage.textContent = `「${record.taskName}（${duration}）」を削除します。`;
+    elements.confirmOverlay.hidden = false;
+    elements.confirmDeleteButton.focus();
+  }
+
+  function closeDeleteConfirm() {
+    pendingDeleteRecordId = "";
+    pendingDeleteRecord = null;
+    elements.confirmOverlay.hidden = true;
+    if (confirmPreviousFocus && typeof confirmPreviousFocus.focus === "function") {
+      confirmPreviousFocus.focus();
+    }
+    confirmPreviousFocus = null;
+  }
+
+  function isDeleteConfirmOpen() {
+    return !elements.confirmOverlay.hidden;
+  }
+
+  function confirmDeleteHistoryRecord() {
+    if (!pendingDeleteRecordId && !pendingDeleteRecord) return;
+    const recordIndex = state.records.findIndex((item) => item.id === pendingDeleteRecordId || item === pendingDeleteRecord);
+    if (recordIndex < 0) {
+      closeDeleteConfirm();
+      return;
+    }
     state.records.splice(recordIndex, 1);
+    closeDeleteConfirm();
     saveRecords();
     renderHistory();
     showToast("作業履歴を削除しました");
   }
 
   function openHistoryDialog() {
+    loadRecords();
     elements.historyDate.value = localDateKey();
     renderHistory();
     elements.historyDialog.showModal();
@@ -487,6 +532,7 @@
     elements.manualMinutesInput.value = "0";
     elements.manualSecondsInput.value = "0";
     elements.manualHistoryError.textContent = "";
+    renderRecentTasks(elements.manualRecentTaskList, elements.manualTaskInput);
     elements.addHistoryDialog.showModal();
     window.setTimeout(() => elements.manualTaskInput.focus(), 0);
   }
@@ -607,6 +653,13 @@
   async function openCompactWindow() { if (!(await openDocumentPictureInPicture())) openPopupWindow(); }
 
   function handleKeyboard(event) {
+    if (isDeleteConfirmOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDeleteConfirm();
+      }
+      return;
+    }
     if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.taskDialog.open || elements.historyDialog.open) return;
     if (event.code === "Space") {
       event.preventDefault();
@@ -635,11 +688,17 @@
     });
     elements.taskDialog.addEventListener("close", () => { pendingRecordAfterTaskInput = false; });
     elements.historyButton.addEventListener("click", openHistoryDialog);
+    elements.historyDialog.addEventListener("close", () => { if (isDeleteConfirmOpen()) closeDeleteConfirm(); });
     elements.historyDate.addEventListener("change", renderHistory);
     elements.unitButtons.forEach((button) => button.addEventListener("click", () => { state.historyUnit = button.dataset.unit; renderHistory(); }));
     elements.addHistoryButton.addEventListener("click", openAddHistoryDialog);
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
     elements.exportHistoryButton.addEventListener("click", exportAllHistory);
+    elements.cancelDeleteButton.addEventListener("click", closeDeleteConfirm);
+    elements.confirmDeleteButton.addEventListener("click", confirmDeleteHistoryRecord);
+    elements.confirmOverlay.addEventListener("click", (event) => {
+      if (event.target === elements.confirmOverlay) closeDeleteConfirm();
+    });
     elements.closeDialogButtons.forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
     elements.startPauseButton.addEventListener("pointerdown", handleTimerPointerDown);
     elements.startPauseButton.addEventListener("click", handleTimerClick);
