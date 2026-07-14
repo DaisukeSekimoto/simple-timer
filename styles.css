@@ -309,6 +309,22 @@ h1 {
   background: #fbfcfc;
 }
 
+#start-pause-button,
+#next-task-button {
+  min-width: 0;
+  overflow-wrap: normal;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+
+#start-pause-button {
+  white-space: pre;
+}
+
+#next-task-button {
+  white-space: nowrap;
+}
+
 .modal {
   width: min(calc(100% - 24px), 410px);
   max-height: calc(100vh - 32px);
