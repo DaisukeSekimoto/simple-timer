@@ -35,7 +35,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -110,9 +111,19 @@ h1 {
 .record-date {
   margin: 3px 0 0;
   font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
 
+.clock-colon {
+  display: inline-block;
+  width: 0.45em;
+  text-align: center;
+}
+
+.clock-colon.is-hidden {
+  opacity: 0;
+}
 .icon-button {
   display: inline-grid;
   width: 40px;
@@ -139,6 +150,89 @@ h1 {
 
 .minimize-button {
   display: none;
+}
+
+.timer-workspace-tabs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: start;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.timer-tab-list {
+  display: flex;
+  min-width: 0;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.timer-workspace-tab {
+  display: flex;
+  min-width: min(128px, 100%);
+  max-width: 100%;
+  flex: 1 1 128px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #eef2f4;
+}
+
+.timer-workspace-tab.is-active {
+  border-color: var(--accent);
+  background: var(--panel);
+}
+
+.timer-tab-select,
+.timer-tab-close,
+.add-timer-tab-button {
+  min-height: 36px;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 700;
+}
+
+.timer-tab-select {
+  min-width: 0;
+  padding: 0 10px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer-workspace-tab.is-active .timer-tab-select {
+  color: var(--accent-strong);
+}
+
+.timer-tab-close {
+  width: 30px;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.timer-tab-close:hover,
+.timer-tab-close:focus-visible {
+  color: var(--danger);
+  background: #f8eae8;
+}
+
+.add-timer-tab-button {
+  width: 38px;
+  flex: 0 0 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--accent);
+  background: var(--panel);
+  font-size: 1.2rem;
+}
+
+.timer-tab-select:hover,
+.timer-tab-select:focus-visible,
+.add-timer-tab-button:hover,
+.add-timer-tab-button:focus-visible {
+  background: #f8fafb;
 }
 
 .icon-button:hover,
@@ -215,6 +309,7 @@ h1 {
 }
 
 .dialog-field input,
+.dialog-field select,
 .time-inputs input {
   width: 100%;
   border: 1px solid var(--line);
@@ -343,7 +438,9 @@ h1 {
 .modal-card {
   display: grid;
   gap: 18px;
+  max-height: inherit;
   margin: 0;
+  overflow-y: auto;
   padding: 20px;
   background: var(--panel);
 }
@@ -376,9 +473,16 @@ h1 {
   gap: 6px;
 }
 
-.dialog-field input {
+.dialog-field input,
+.dialog-field select {
   min-height: 42px;
   padding: 8px 10px;
+}
+
+.dialog-field input[readonly] {
+  color: var(--muted);
+  background: #eef2f4;
+  cursor: not-allowed;
 }
 
 .modal-submit {
@@ -389,7 +493,9 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+  max-height: 150px;
   margin-top: 9px;
+  overflow-y: auto;
 }
 
 .recent-task-button {
@@ -462,6 +568,54 @@ h1 {
   gap: 8px;
 }
 
+.edit-history-actions {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 8px;
+}
+
+.confirm-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(23, 32, 38, 0.48);
+}
+
+.confirm-overlay[hidden] {
+  display: none;
+}
+
+.confirm-card {
+  display: grid;
+  width: min(100%, 330px);
+  gap: 14px;
+  padding: 18px;
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.confirm-card h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.confirm-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .form-error {
   min-height: 20px;
   margin: -8px 0 0;
@@ -507,6 +661,21 @@ h1 {
   background: var(--accent-strong);
 }
 
+.danger-button {
+  min-height: 40px;
+  border: 1px solid var(--danger);
+  border-radius: 7px;
+  color: #fff;
+  background: var(--danger);
+  font-weight: 700;
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  border-color: #973629;
+  background: #973629;
+}
+
 .is-finished .time-display {
   color: var(--danger);
 }
@@ -550,12 +719,13 @@ h1 {
 }
 
 .is-minimized {
-  min-width: 240px;
-  min-height: 150px;
+  min-width: 320px;
+  min-height: 190px;
 }
 
 .is-popup.is-minimized .app {
-  max-width: 280px;
+  max-width: 320px;
+  padding: 10px;
 }
 
 .is-popup.is-minimized .timer-panel {
@@ -564,14 +734,16 @@ h1 {
 }
 
 .is-popup.is-minimized .mode-tabs,
+.is-popup.is-minimized .timer-workspace-tabs,
 .is-popup.is-minimized .timer-form,
-.is-popup.is-minimized .control-row {
+.is-popup.is-minimized .control-row,
+.is-popup.is-minimized #history-button {
   display: none;
 }
 
 .is-popup.is-minimized .time-display {
-  padding: 14px 8px 12px;
-  font-size: clamp(2.5rem, 22vw, 3.4rem);
+  padding: 10px 8px 12px;
+  font-size: clamp(2.5rem, 18vw, 3.4rem);
 }
 
 @keyframes flash {

@@ -26,7 +26,12 @@
         </div>
       </header>
 
-      <section class="timer-panel" aria-label="タイマー">
+      <nav class="timer-workspace-tabs" aria-label="タイマー一覧">
+        <div id="timer-tab-list" class="timer-tab-list" role="tablist"></div>
+        <button id="add-timer-tab-button" class="add-timer-tab-button" type="button" aria-label="タイマーを追加" title="タイマーを追加">＋</button>
+      </nav>
+
+      <section id="timer-panel" class="timer-panel" aria-label="タイマー">
         <div class="mode-tabs" role="tablist" aria-label="モード">
           <button id="countdown-tab" class="mode-tab is-active" type="button" role="tab" aria-selected="true" data-mode="countdown">
             カウントダウン
@@ -80,6 +85,36 @@
         </div>
       </section>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div id="timer-tab-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="timer-tab-confirm-title">
+        <section class="confirm-card">
+          <h2 id="timer-tab-confirm-title">開始済みのタイマーを削除しますか？</h2>
+          <p id="timer-tab-confirm-message" class="confirm-message"></p>
+          <div class="confirm-actions">
+            <button id="cancel-timer-tab-delete-button" class="secondary-button" type="button">キャンセル</button>
+            <button id="confirm-timer-tab-delete-button" class="danger-button" type="button">削除</button>
+          </div>
+        </section>
+      </div>
+      <div id="mode-switch-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="mode-switch-confirm-title">
+        <section class="confirm-card">
+          <h2 id="mode-switch-confirm-title">計測中の時間を削除しますか？</h2>
+          <p id="mode-switch-confirm-message" class="confirm-message"></p>
+          <div class="confirm-actions">
+            <button id="cancel-mode-switch-button" class="secondary-button" type="button">キャンセル</button>
+            <button id="confirm-mode-switch-button" class="danger-button" type="button">削除して切り替える</button>
+          </div>
+        </section>
+      </div>
+      <div id="timer-navigation-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="timer-navigation-confirm-title">
+        <section class="confirm-card">
+          <h2 id="timer-navigation-confirm-title">タイマーが動作中です</h2>
+          <p id="timer-navigation-confirm-message" class="confirm-message"></p>
+          <div class="confirm-actions">
+            <button id="cancel-timer-navigation-button" class="secondary-button" type="button">キャンセル</button>
+            <button id="confirm-timer-navigation-button" class="primary-button" type="button">一時停止して移動</button>
+          </div>
+        </section>
+      </div>
 
     <dialog id="task-dialog" class="modal">
       <form id="task-dialog-form" class="modal-card">
@@ -104,14 +139,14 @@
         <div class="modal-header">
           <div class="history-title">
             <h2>作業履歴</h2>
-            <p class="history-help">各記録をクリックすると削除することができます。</p>
+            <p class="history-help">各記録をクリックすると内容の変更・削除ができます。</p>
           </div>
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <div class="history-filters">
           <label class="dialog-field">
             <span>日付</span>
-            <input id="history-date" type="date">
+            <select id="history-date"></select>
           </label>
           <div class="unit-toggle" role="group" aria-label="時間の表示形式">
             <button class="unit-button is-active" type="button" data-unit="minutes">mm表記</button>
@@ -123,7 +158,52 @@
           <button id="add-history-button" class="primary-button" type="button">作業履歴を追加</button>
           <button id="export-history-button" class="secondary-button" type="button">全履歴をTXT出力</button>
         </div>
+        <div id="confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+          <section class="confirm-card">
+            <h2 id="confirm-title">作業履歴を削除しますか？</h2>
+            <p id="confirm-message" class="confirm-message"></p>
+            <div class="confirm-actions">
+              <button id="cancel-delete-button" class="secondary-button" type="button">キャンセル</button>
+              <button id="confirm-delete-button" class="danger-button" type="button">削除</button>
+            </div>
+          </section>
+        </div>
       </section>
+    </dialog>
+
+    <dialog id="edit-history-dialog" class="modal">
+      <form id="edit-history-form" class="modal-card">
+        <div class="modal-header">
+          <h2>作業履歴を編集</h2>
+          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+        </div>
+        <fieldset class="countdown-settings">
+          <legend>作業時間</legend>
+          <div class="time-inputs">
+            <label>
+              <span>時</span>
+              <input id="edit-hours-input" type="number" inputmode="numeric" min="0" step="1">
+            </label>
+            <label>
+              <span>分</span>
+              <input id="edit-minutes-input" type="number" inputmode="numeric" min="0" step="1">
+            </label>
+            <label>
+              <span>秒</span>
+              <input id="edit-seconds-input" type="number" inputmode="numeric" min="0" step="1">
+            </label>
+          </div>
+        </fieldset>
+        <label class="dialog-field">
+          <span>タスク名</span>
+          <input id="edit-task-input" type="text" autocomplete="off" maxlength="80" required>
+        </label>
+        <p id="edit-history-error" class="form-error" aria-live="polite"></p>
+        <div class="edit-history-actions">
+          <button id="edit-delete-button" class="danger-button" type="button">削除</button>
+          <button class="primary-button" type="submit">変更を保存</button>
+        </div>
+      </form>
     </dialog>
 
     <dialog id="add-history-dialog" class="modal">
@@ -134,29 +214,33 @@
         </div>
         <label class="dialog-field">
           <span>日付</span>
-          <input id="manual-date" type="date" required>
-        </label>
-        <label class="dialog-field">
-          <span>タスク名</span>
-          <input id="manual-task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
+          <input id="manual-date" type="date" readonly aria-readonly="true" required>
         </label>
         <fieldset class="countdown-settings">
           <legend>作業時間</legend>
           <div class="time-inputs">
             <label>
               <span>時</span>
-              <input id="manual-hours-input" type="number" inputmode="numeric" min="0" max="99" step="1" value="0">
+              <input id="manual-hours-input" type="number" inputmode="numeric" min="0" step="1" value="0">
             </label>
             <label>
               <span>分</span>
-              <input id="manual-minutes-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
+              <input id="manual-minutes-input" type="number" inputmode="numeric" min="0" step="1" value="0">
             </label>
             <label>
               <span>秒</span>
-              <input id="manual-seconds-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
+              <input id="manual-seconds-input" type="number" inputmode="numeric" min="0" step="1" value="0">
             </label>
           </div>
         </fieldset>
+        <label class="dialog-field">
+          <span>タスク名</span>
+          <input id="manual-task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
+        </label>
+        <div>
+          <h3>最近のタスク</h3>
+          <div id="manual-recent-task-list" class="recent-task-list"></div>
+        </div>
         <p id="manual-history-error" class="form-error" aria-live="polite"></p>
         <button class="primary-button modal-submit" type="submit">履歴に追加</button>
       </form>
