@@ -1,11 +1,13 @@
 (function () {
   const STORAGE_KEY = "simple-timer-state";
   const RECORDS_KEY = "simple-timer-records";
+  const POPUP_SIZE_KEY = "simple-timer-popup-size";
+  const MINIMIZED_POPUP_SIZE_KEY = "simple-timer-minimized-popup-size";
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
   const TICK_INTERVAL_MS = 250;
-  const POPUP_SIZE = { width: 400, height: 640 };
-  const MINIMIZED_POPUP_SIZE = { width: 320, height: 205 };
+  const POPUP_SIZE_LIMITS = { minWidth: 320, maxWidth: 720, minHeight: 190, maxHeight: 900 };
+  const OPTIMAL_POPUP_MIN_HEIGHT = 360;
 
   const elements = {
     body: document.body,
@@ -18,6 +20,12 @@
     popupButton: document.querySelector("#popup-button"),
     minimizeButton: document.querySelector("#minimize-button"),
     historyButton: document.querySelector("#history-button"),
+    settingsButton: document.querySelector("#settings-button"),
+    settingsDialog: document.querySelector("#settings-dialog"),
+    popupSizeStatus: document.querySelector("#popup-size-status"),
+    resetPopupSizeButton: document.querySelector("#reset-popup-size-button"),
+    minimizedPopupSizeStatus: document.querySelector("#minimized-popup-size-status"),
+    resetMinimizedPopupSizeButton: document.querySelector("#reset-minimized-popup-size-button"),
     timerTabList: document.querySelector("#timer-tab-list"),
     addTimerTabButton: document.querySelector("#add-timer-tab-button"),
     timerTabConfirmOverlay: document.querySelector("#timer-tab-confirm-overlay"),
@@ -112,6 +120,9 @@
   let pendingTimerNavigation = null;
   let timerNavigationConfirmPreviousFocus = null;
   let displayedClockSecond = -1;
+  let popupResizeSaveId = 0;
+  let suppressPopupSizeSaveUntil = 0;
+  let preMinimizePopupSize = null;
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -335,6 +346,161 @@
 
   function getCurrentBody() { return elements.app.ownerDocument.body; }
   function isPopupContext() { return getCurrentBody().classList.contains("is-popup"); }
+
+  function clamp(value, minimum, maximum) {
+    return Math.min(maximum, Math.max(minimum, value));
+  }
+
+  function normalizePopupSize(size) {
+    if (!size || !Number.isFinite(size.width) || !Number.isFinite(size.height)) return null;
+    return {
+      width: Math.round(clamp(size.width, POPUP_SIZE_LIMITS.minWidth, POPUP_SIZE_LIMITS.maxWidth)),
+      height: Math.round(clamp(size.height, POPUP_SIZE_LIMITS.minHeight, POPUP_SIZE_LIMITS.maxHeight)),
+    };
+  }
+
+  function loadStoredPopupSize(key) {
+    try {
+      return normalizePopupSize(JSON.parse(localStorage.getItem(key) || "null"));
+    } catch {
+      localStorage.removeItem(key);
+      return null;
+    }
+  }
+
+  function loadSavedPopupSize() {
+    return loadStoredPopupSize(POPUP_SIZE_KEY);
+  }
+
+  function loadSavedMinimizedPopupSize() {
+    return loadStoredPopupSize(MINIMIZED_POPUP_SIZE_KEY);
+  }
+
+  function calculateOptimalPopupSize(view = window) {
+    const screen = view.screen || window.screen;
+    const availableWidth = Number.isFinite(screen.availWidth) ? screen.availWidth - 32 : POPUP_SIZE_LIMITS.maxWidth;
+    const availableHeight = Number.isFinite(screen.availHeight) ? screen.availHeight - 48 : POPUP_SIZE_LIMITS.maxHeight;
+    const configuredMaxWidth = Number.parseFloat(view.getComputedStyle(elements.app).maxWidth);
+    const contentWidth = Math.ceil(Math.max(
+      elements.app.scrollWidth,
+      elements.app.getBoundingClientRect().width,
+      Number.isFinite(configuredMaxWidth) ? configuredMaxWidth : 0,
+    ));
+    const contentHeight = Math.ceil(Math.max(elements.app.scrollHeight, elements.app.getBoundingClientRect().height));
+    return {
+      width: Math.round(clamp(contentWidth, POPUP_SIZE_LIMITS.minWidth, Math.min(POPUP_SIZE_LIMITS.maxWidth, availableWidth))),
+      height: Math.round(clamp(contentHeight + 8, OPTIMAL_POPUP_MIN_HEIGHT, Math.min(POPUP_SIZE_LIMITS.maxHeight, availableHeight))),
+    };
+  }
+
+  function calculateOptimalMinimizedPopupSize(view = window) {
+    const screen = view.screen || window.screen;
+    const availableWidth = Number.isFinite(screen.availWidth) ? screen.availWidth - 32 : POPUP_SIZE_LIMITS.maxWidth;
+    const availableHeight = Number.isFinite(screen.availHeight) ? screen.availHeight - 48 : POPUP_SIZE_LIMITS.maxHeight;
+    const appStyle = view.getComputedStyle(elements.app);
+    const headerHeight = Math.ceil(elements.app.querySelector(".app-header").getBoundingClientRect().height);
+    const verticalPadding = (Number.parseFloat(appStyle.paddingTop) || 0) + (Number.parseFloat(appStyle.paddingBottom) || 0);
+    const contentHeight = headerHeight + verticalPadding + 92;
+    return {
+      width: Math.round(clamp(320, POPUP_SIZE_LIMITS.minWidth, Math.min(POPUP_SIZE_LIMITS.maxWidth, availableWidth))),
+      height: Math.round(clamp(contentHeight, POPUP_SIZE_LIMITS.minHeight, Math.min(POPUP_SIZE_LIMITS.maxHeight, availableHeight))),
+    };
+  }
+
+  function fitPopupSizeToScreen(size, view = window) {
+    const screen = view.screen || window.screen;
+    const maximumWidth = Math.min(POPUP_SIZE_LIMITS.maxWidth, Math.max(POPUP_SIZE_LIMITS.minWidth, screen.availWidth - 32));
+    const maximumHeight = Math.min(POPUP_SIZE_LIMITS.maxHeight, Math.max(POPUP_SIZE_LIMITS.minHeight, screen.availHeight - 48));
+    return {
+      width: Math.round(clamp(size.width, POPUP_SIZE_LIMITS.minWidth, maximumWidth)),
+      height: Math.round(clamp(size.height, POPUP_SIZE_LIMITS.minHeight, maximumHeight)),
+    };
+  }
+
+  function getPreferredPopupSize(view = window) {
+    const savedSize = loadSavedPopupSize();
+    return savedSize ? fitPopupSizeToScreen(savedSize, view) : calculateOptimalPopupSize(view);
+  }
+
+  function savePopupSize(size, isMinimized = false) {
+    const normalized = normalizePopupSize(size);
+    if (!normalized) return;
+    const key = isMinimized ? MINIMIZED_POPUP_SIZE_KEY : POPUP_SIZE_KEY;
+    localStorage.setItem(key, JSON.stringify(normalized));
+    updatePopupSizeSettings();
+  }
+
+  function updatePopupSizeSettings() {
+    const savedSize = loadSavedPopupSize();
+    const savedMinimizedSize = loadSavedMinimizedPopupSize();
+    const automaticSize = calculateOptimalPopupSize(elements.app.ownerDocument.defaultView || window);
+    const automaticMinimizedSize = calculateOptimalMinimizedPopupSize(elements.app.ownerDocument.defaultView || window);
+    const minimizedSize = savedMinimizedSize || automaticMinimizedSize;
+    elements.popupSizeStatus.textContent = savedSize
+      ? `${savedSize.width} × ${savedSize.height}px（保存済み）`
+      : `${automaticSize.width} × ${automaticSize.height}px（自動）`;
+    elements.minimizedPopupSizeStatus.textContent = savedMinimizedSize
+      ? `${minimizedSize.width} × ${minimizedSize.height}px（保存済み）`
+      : `${minimizedSize.width} × ${minimizedSize.height}px（自動）`;
+    elements.resetPopupSizeButton.disabled = !savedSize;
+    elements.resetMinimizedPopupSizeButton.disabled = !savedMinimizedSize;
+  }
+
+  function openSettingsDialog() {
+    updatePopupSizeSettings();
+    elements.settingsDialog.showModal();
+  }
+
+  function schedulePopupSizeSave(view) {
+    if (!isPopupContext() || now() < suppressPopupSizeSaveUntil) return;
+    const sizeAtResize = { width: view.innerWidth, height: view.innerHeight };
+    const wasMinimizedAtResize = state.isMinimized;
+    window.clearTimeout(popupResizeSaveId);
+    popupResizeSaveId = window.setTimeout(() => {
+      if (!isPopupContext() || now() < suppressPopupSizeSaveUntil) return;
+      savePopupSize(sizeAtResize, wasMinimizedAtResize);
+      popupResizeSaveId = 0;
+    }, 350);
+  }
+
+  function cancelPendingPopupSizeSave() {
+    window.clearTimeout(popupResizeSaveId);
+    popupResizeSaveId = 0;
+  }
+
+  function resizePopupWindow(view, size) {
+    suppressPopupSizeSaveUntil = now() + 1000;
+    const frameWidth = Math.max(0, view.outerWidth - view.innerWidth);
+    const frameHeight = Math.max(0, view.outerHeight - view.innerHeight);
+    try { view.resizeTo(size.width + frameWidth, size.height + frameHeight); } catch {}
+  }
+
+  function applyPopupSize(view, size) {
+    cancelPendingPopupSizeSave();
+    resizePopupWindow(view, size);
+    view.requestAnimationFrame(() => resizePopupWindow(view, size));
+  }
+
+  function resetPopupSize() {
+    localStorage.removeItem(POPUP_SIZE_KEY);
+    preMinimizePopupSize = null;
+    updatePopupSizeSettings();
+    if (isPopupContext() && !state.isMinimized) {
+      const view = elements.app.ownerDocument.defaultView;
+      applyPopupSize(view, calculateOptimalPopupSize(view));
+    }
+    showToast("PiPサイズを自動設定に戻しました");
+  }
+
+  function resetMinimizedPopupSize() {
+    localStorage.removeItem(MINIMIZED_POPUP_SIZE_KEY);
+    updatePopupSizeSettings();
+    if (isPopupContext() && state.isMinimized) {
+      const view = elements.app.ownerDocument.defaultView;
+      applyPopupSize(view, fitPopupSizeToScreen(calculateOptimalMinimizedPopupSize(view), view));
+    }
+    showToast("最小化サイズを自動設定に戻しました");
+  }
 
   function timerTabLabel(tab) {
     const name = tab.id === state.activeTimerId ? state.taskName : tab.taskName;
@@ -1093,34 +1259,60 @@
   function openPopupWindow() {
     const url = new URL(window.location.href);
     url.searchParams.set("popup", "1");
-    const handle = window.open(url.toString(), "simpleTimerPopup", `popup=yes,width=${POPUP_SIZE.width},height=${POPUP_SIZE.height},left=120,top=120,resizable=yes,scrollbars=yes`);
+    const size = getPreferredPopupSize(window);
+    const handle = window.open(url.toString(), "simpleTimerPopup", `popup=yes,width=${size.width},height=${size.height},left=120,top=120,resizable=yes,scrollbars=yes`);
     elements.statusText.textContent = handle ? "小窓を開きました" : "ポップアップがブロックされました";
     if (handle) handle.focus();
   }
 
-  function resizePopup(width, height) { if (isPopupContext()) { try { elements.app.ownerDocument.defaultView.resizeTo(width, height); } catch {} } }
   function toggleMinimized() {
     if (!isPopupContext()) return;
-    state.isMinimized = !state.isMinimized;
-    const size = state.isMinimized ? MINIMIZED_POPUP_SIZE : POPUP_SIZE;
-    resizePopup(size.width, size.height);
+    const view = elements.app.ownerDocument.defaultView;
+    if (!state.isMinimized) {
+      preMinimizePopupSize = { width: view.innerWidth, height: view.innerHeight };
+      cancelPendingPopupSizeSave();
+      savePopupSize(preMinimizePopupSize, false);
+      state.isMinimized = true;
+      render();
+      const minimizedSize = loadSavedMinimizedPopupSize() || calculateOptimalMinimizedPopupSize(view);
+      applyPopupSize(view, fitPopupSizeToScreen(minimizedSize, view));
+      return;
+    }
+    const currentMinimizedSize = { width: view.innerWidth, height: view.innerHeight };
+    cancelPendingPopupSizeSave();
+    savePopupSize(currentMinimizedSize, true);
+    state.isMinimized = false;
     render();
+    const restoreSize = preMinimizePopupSize || loadSavedPopupSize() || calculateOptimalPopupSize(view);
+    preMinimizePopupSize = null;
+    applyPopupSize(view, fitPopupSizeToScreen(restoreSize, view));
   }
 
   async function openDocumentPictureInPicture() {
     const pip = window.documentPictureInPicture;
     if (!pip || typeof pip.requestWindow !== "function") return false;
     try {
-      const pipWindow = await pip.requestWindow(POPUP_SIZE);
+      const hadSavedSize = Boolean(loadSavedPopupSize());
+      const pipWindow = await pip.requestWindow(getPreferredPopupSize(window));
       const styleLink = pipWindow.document.createElement("link");
       styleLink.rel = "stylesheet"; styleLink.href = "./styles.css";
       pipWindow.document.head.append(styleLink);
       pipWindow.document.body.className = "is-popup";
       pipWindow.document.body.append(elements.app);
       pipWindow.document.addEventListener("keydown", handleKeyboard);
-      pipWindow.addEventListener("resize", scheduleFitControlButtonText);
+      suppressPopupSizeSaveUntil = now() + 1200;
+      pipWindow.addEventListener("resize", () => {
+        scheduleFitControlButtonText();
+        schedulePopupSizeSave(pipWindow);
+      });
+      if (!hadSavedSize) {
+        const fitToContent = () => resizePopupWindow(pipWindow, calculateOptimalPopupSize(pipWindow));
+        styleLink.addEventListener("load", () => pipWindow.requestAnimationFrame(fitToContent), { once: true });
+        pipWindow.requestAnimationFrame(() => pipWindow.requestAnimationFrame(fitToContent));
+      }
       pipWindow.addEventListener("pagehide", () => {
         state.isMinimized = false;
+        preMinimizePopupSize = null;
         document.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
         document.body.append(elements.app); render();
       });
@@ -1159,7 +1351,7 @@
       }
       return;
     }
-    if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.taskDialog.open || elements.historyDialog.open) return;
+    if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.app.ownerDocument.querySelector("dialog[open]")) return;
     if (event.code === "Space") {
       event.preventDefault();
       isFinishedCountdown() ? moveToNextTask() : state.isRunning ? pauseTimer() : startTimer();
@@ -1178,6 +1370,9 @@
       if (selectButton) selectTimerTab(selectButton.dataset.timerId);
     });
     elements.addTimerTabButton.addEventListener("click", addTimerTab);
+    elements.settingsButton.addEventListener("click", openSettingsDialog);
+    elements.resetPopupSizeButton.addEventListener("click", resetPopupSize);
+    elements.resetMinimizedPopupSizeButton.addEventListener("click", resetMinimizedPopupSize);
     elements.cancelTimerNavigationButton.addEventListener("click", closeTimerNavigationConfirm);
     elements.confirmTimerNavigationButton.addEventListener("click", confirmTimerNavigation);
     elements.timerNavigationConfirmOverlay.addEventListener("click", (event) => {
@@ -1244,6 +1439,7 @@
     elements.minimizeButton.addEventListener("click", toggleMinimized);
     document.addEventListener("keydown", handleKeyboard);
     window.addEventListener("resize", scheduleFitControlButtonText);
+    window.addEventListener("resize", () => schedulePopupSizeSave(window));
     window.addEventListener("beforeunload", (event) => {
       if (!hasStartedTimer()) return;
       saveState();
@@ -1254,12 +1450,17 @@
 
   function initialize() {
     loadState();
-    elements.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
+    const isPopup = new URLSearchParams(location.search).has("popup");
+    elements.body.classList.toggle("is-popup", isPopup);
+    if (isPopup) suppressPopupSizeSaveUntil = now() + 1200;
     syncInputsFromDuration();
     bindEvents();
     updateDateTime();
     window.setInterval(updateDateTime, 250);
     render();
+    if (isPopup) {
+      window.requestAnimationFrame(() => applyPopupSize(window, getPreferredPopupSize(window)));
+    }
   }
 
   initialize();
