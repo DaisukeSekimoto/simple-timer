@@ -1,9 +1,13 @@
 (function () {
   const STORAGE_KEY = "simple-timer-state";
   const RECORDS_KEY = "simple-timer-records";
+  const POPUP_SIZE_KEY = "simple-timer-popup-size";
+  const MINIMIZED_POPUP_SIZE_KEY = "simple-timer-minimized-popup-size";
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
   const TICK_INTERVAL_MS = 250;
+  const POPUP_SIZE_LIMITS = { minWidth: 320, maxWidth: 720, minHeight: 190, maxHeight: 900 };
+  const OPTIMAL_POPUP_MIN_HEIGHT = 360;
 
   const elements = {
     body: document.body,
@@ -16,6 +20,26 @@
     popupButton: document.querySelector("#popup-button"),
     minimizeButton: document.querySelector("#minimize-button"),
     historyButton: document.querySelector("#history-button"),
+    settingsButton: document.querySelector("#settings-button"),
+    settingsDialog: document.querySelector("#settings-dialog"),
+    popupSizeStatus: document.querySelector("#popup-size-status"),
+    resetPopupSizeButton: document.querySelector("#reset-popup-size-button"),
+    minimizedPopupSizeStatus: document.querySelector("#minimized-popup-size-status"),
+    resetMinimizedPopupSizeButton: document.querySelector("#reset-minimized-popup-size-button"),
+    timerTabList: document.querySelector("#timer-tab-list"),
+    addTimerTabButton: document.querySelector("#add-timer-tab-button"),
+    timerTabConfirmOverlay: document.querySelector("#timer-tab-confirm-overlay"),
+    timerTabConfirmMessage: document.querySelector("#timer-tab-confirm-message"),
+    cancelTimerTabDeleteButton: document.querySelector("#cancel-timer-tab-delete-button"),
+    confirmTimerTabDeleteButton: document.querySelector("#confirm-timer-tab-delete-button"),
+    modeSwitchConfirmOverlay: document.querySelector("#mode-switch-confirm-overlay"),
+    modeSwitchConfirmMessage: document.querySelector("#mode-switch-confirm-message"),
+    cancelModeSwitchButton: document.querySelector("#cancel-mode-switch-button"),
+    confirmModeSwitchButton: document.querySelector("#confirm-mode-switch-button"),
+    timerNavigationConfirmOverlay: document.querySelector("#timer-navigation-confirm-overlay"),
+    timerNavigationConfirmMessage: document.querySelector("#timer-navigation-confirm-message"),
+    cancelTimerNavigationButton: document.querySelector("#cancel-timer-navigation-button"),
+    confirmTimerNavigationButton: document.querySelector("#confirm-timer-navigation-button"),
     modeTabs: Array.from(document.querySelectorAll(".mode-tab")),
     countdownSettings: document.querySelector("#countdown-settings"),
     hoursInput: document.querySelector("#hours-input"),
@@ -28,6 +52,7 @@
     taskDialog: document.querySelector("#task-dialog"),
     taskDialogForm: document.querySelector("#task-dialog-form"),
     recentTaskList: document.querySelector("#recent-task-list"),
+    manualRecentTaskList: document.querySelector("#manual-recent-task-list"),
     historyDialog: document.querySelector("#history-dialog"),
     historyDate: document.querySelector("#history-date"),
     historyList: document.querySelector("#history-list"),
@@ -41,6 +66,18 @@
     manualMinutesInput: document.querySelector("#manual-minutes-input"),
     manualSecondsInput: document.querySelector("#manual-seconds-input"),
     manualHistoryError: document.querySelector("#manual-history-error"),
+    editHistoryDialog: document.querySelector("#edit-history-dialog"),
+    editHistoryForm: document.querySelector("#edit-history-form"),
+    editTaskInput: document.querySelector("#edit-task-input"),
+    editHoursInput: document.querySelector("#edit-hours-input"),
+    editMinutesInput: document.querySelector("#edit-minutes-input"),
+    editSecondsInput: document.querySelector("#edit-seconds-input"),
+    editHistoryError: document.querySelector("#edit-history-error"),
+    editDeleteButton: document.querySelector("#edit-delete-button"),
+    confirmOverlay: document.querySelector("#confirm-overlay"),
+    confirmMessage: document.querySelector("#confirm-message"),
+    cancelDeleteButton: document.querySelector("#cancel-delete-button"),
+    confirmDeleteButton: document.querySelector("#confirm-delete-button"),
     unitButtons: Array.from(document.querySelectorAll(".unit-button")),
     closeDialogButtons: Array.from(document.querySelectorAll(".close-dialog")),
     startPauseButton: document.querySelector("#start-pause-button"),
@@ -56,9 +93,13 @@
     countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
     taskName: "",
     finishedAt: 0,
+    hasStarted: false,
     isMinimized: false,
     records: [],
     historyUnit: "minutes",
+    timerTabs: [],
+    activeTimerId: "",
+    nextTimerNumber: 1,
   };
 
   let tickId = 0;
@@ -67,6 +108,21 @@
   let audioContext = null;
   let pendingRecordAfterTaskInput = false;
   let fitButtonsFrame = 0;
+  let pendingDeleteRecordId = "";
+  let pendingDeleteRecord = null;
+  let editingRecord = null;
+  let confirmPreviousFocus = null;
+  let timerTabsSignature = "";
+  let pendingCloseTimerId = "";
+  let timerTabConfirmPreviousFocus = null;
+  let pendingMode = "";
+  let modeSwitchConfirmPreviousFocus = null;
+  let pendingTimerNavigation = null;
+  let timerNavigationConfirmPreviousFocus = null;
+  let displayedClockSecond = -1;
+  let popupResizeSaveId = 0;
+  let suppressPopupSizeSaveUntil = 0;
+  let preMinimizePopupSize = null;
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -75,43 +131,154 @@
     return `${year}-${month}-${day}`;
   }
 
-  function formatJapaneseDate(date = new Date()) {
-    return new Intl.DateTimeFormat("ja-JP", {
+  function updateDateTime(date = new Date()) {
+    const currentSecond = Math.floor(date.getTime() / 1000);
+    if (currentSecond === displayedClockSecond) return;
+    displayedClockSecond = currentSecond;
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const dateText = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    const firstColon = document.createElement("span");
+    const secondColon = document.createElement("span");
+    const colonClassName = date.getSeconds() % 2 === 0 ? "clock-colon" : "clock-colon is-hidden";
+    firstColon.className = colonClassName;
+    secondColon.className = colonClassName;
+    firstColon.textContent = ":";
+    secondColon.textContent = ":";
+    elements.recordDate.replaceChildren(
+      document.createTextNode(`${dateText}(${weekdays[date.getDay()]}) ${hours}`),
+      firstColon,
+      document.createTextNode(minutes),
+      secondColon,
+      document.createTextNode(seconds),
+    );
+  }
+
+  function formatHistoryDateLabel(dateKey) {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    const label = new Intl.DateTimeFormat("ja-JP", {
       year: "numeric", month: "long", day: "numeric", weekday: "short",
     }).format(date);
+    return dateKey === localDateKey() ? `${label}（本日）` : label;
+  }
+
+  function createTimerTab(number = state.nextTimerNumber) {
+    return {
+      id: `${now()}-${Math.random().toString(16).slice(2)}`,
+      number,
+      mode: MODES.COUNTDOWN,
+      isRunning: false,
+      startedAt: 0,
+      elapsedBeforeStartMs: 0,
+      countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
+      taskName: "",
+      finishedAt: 0,
+      hasStarted: false,
+    };
+  }
+
+  function isValidTimerTab(tab) {
+    return tab && typeof tab.id === "string" && Number.isFinite(tab.number) &&
+      Object.values(MODES).includes(tab.mode) &&
+      Number.isFinite(tab.elapsedBeforeStartMs) && tab.elapsedBeforeStartMs >= 0 &&
+      Number.isFinite(tab.countdownDurationMs) && tab.countdownDurationMs > 0 &&
+      typeof tab.taskName === "string";
+  }
+
+  function snapshotActiveTimer() {
+    const tab = state.timerTabs.find((item) => item.id === state.activeTimerId);
+    if (!tab) return;
+    tab.mode = state.mode;
+    tab.isRunning = state.isRunning;
+    tab.startedAt = state.startedAt;
+    tab.elapsedBeforeStartMs = getElapsedMs();
+    tab.countdownDurationMs = state.countdownDurationMs;
+    tab.taskName = state.taskName;
+    tab.finishedAt = state.finishedAt;
+    tab.hasStarted = state.hasStarted;
+  }
+
+  function applyTimerTab(tab) {
+    state.activeTimerId = tab.id;
+    state.mode = tab.mode;
+    state.isRunning = false;
+    state.startedAt = 0;
+    state.elapsedBeforeStartMs = tab.elapsedBeforeStartMs;
+    state.countdownDurationMs = tab.countdownDurationMs;
+    state.taskName = tab.taskName;
+    state.finishedAt = tab.finishedAt || 0;
+    state.hasStarted = tab.hasStarted === true;
   }
 
   function loadState() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-      if (Object.values(MODES).includes(saved.mode)) state.mode = saved.mode;
-      if (Number.isFinite(saved.countdownDurationMs) && saved.countdownDurationMs > 0) {
-        state.countdownDurationMs = saved.countdownDurationMs;
+      const savedTabs = Array.isArray(saved.timerTabs) ? saved.timerTabs.filter(isValidTimerTab) : [];
+      if (savedTabs.length) {
+        state.timerTabs = savedTabs.map((tab) => ({
+          ...tab,
+          taskName: tab.taskName.slice(0, 80),
+          isRunning: false,
+          startedAt: 0,
+          hasStarted: tab.hasStarted === true || tab.elapsedBeforeStartMs > 0 || tab.finishedAt > 0,
+        }));
+        state.nextTimerNumber = Math.max(...state.timerTabs.map((tab) => tab.number)) + 1;
+        const activeTab = state.timerTabs.find((tab) => tab.id === saved.activeTimerId) || state.timerTabs[0];
+        applyTimerTab(activeTab);
+      } else {
+        const firstTab = createTimerTab(1);
+        if (Object.values(MODES).includes(saved.mode)) firstTab.mode = saved.mode;
+        if (Number.isFinite(saved.countdownDurationMs) && saved.countdownDurationMs > 0) {
+          firstTab.countdownDurationMs = saved.countdownDurationMs;
+        }
+        if (typeof saved.taskName === "string") firstTab.taskName = saved.taskName.slice(0, 80);
+        state.timerTabs = [firstTab];
+        state.nextTimerNumber = 2;
+        applyTimerTab(firstTab);
       }
-      if (typeof saved.taskName === "string") state.taskName = saved.taskName.slice(0, 80);
-      const records = JSON.parse(localStorage.getItem(RECORDS_KEY) || "[]");
-      if (Array.isArray(records)) {
-        state.records = records.filter((record) =>
-          record && typeof record.taskName === "string" && typeof record.date === "string" &&
-          Number.isFinite(record.durationMs) && record.durationMs > 0,
-        );
-      }
+      loadRecords();
     } catch {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(RECORDS_KEY);
+      const firstTab = createTimerTab(1);
+      state.timerTabs = [firstTab];
+      state.nextTimerNumber = 2;
+      applyTimerTab(firstTab);
     }
   }
 
   function saveState() {
+    snapshotActiveTimer();
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      mode: state.mode,
-      countdownDurationMs: state.countdownDurationMs,
-      taskName: state.taskName,
+      activeTimerId: state.activeTimerId,
+      nextTimerNumber: state.nextTimerNumber,
+      timerTabs: state.timerTabs,
     }));
   }
 
   function saveRecords() {
     localStorage.setItem(RECORDS_KEY, JSON.stringify(state.records));
+  }
+
+  function loadRecords() {
+    try {
+      const records = JSON.parse(localStorage.getItem(RECORDS_KEY) || "[]");
+      if (!Array.isArray(records)) return;
+      state.records = records.filter((record) =>
+        record && typeof record.taskName === "string" && typeof record.date === "string" &&
+        Number.isFinite(record.durationMs) && record.durationMs > 0,
+      );
+    } catch {
+      localStorage.removeItem(RECORDS_KEY);
+      state.records = [];
+    }
   }
 
   function now() { return Date.now(); }
@@ -180,6 +347,354 @@
   function getCurrentBody() { return elements.app.ownerDocument.body; }
   function isPopupContext() { return getCurrentBody().classList.contains("is-popup"); }
 
+  function clamp(value, minimum, maximum) {
+    return Math.min(maximum, Math.max(minimum, value));
+  }
+
+  function normalizePopupSize(size) {
+    if (!size || !Number.isFinite(size.width) || !Number.isFinite(size.height)) return null;
+    return {
+      width: Math.round(clamp(size.width, POPUP_SIZE_LIMITS.minWidth, POPUP_SIZE_LIMITS.maxWidth)),
+      height: Math.round(clamp(size.height, POPUP_SIZE_LIMITS.minHeight, POPUP_SIZE_LIMITS.maxHeight)),
+    };
+  }
+
+  function loadStoredPopupSize(key) {
+    try {
+      return normalizePopupSize(JSON.parse(localStorage.getItem(key) || "null"));
+    } catch {
+      localStorage.removeItem(key);
+      return null;
+    }
+  }
+
+  function loadSavedPopupSize() {
+    return loadStoredPopupSize(POPUP_SIZE_KEY);
+  }
+
+  function loadSavedMinimizedPopupSize() {
+    return loadStoredPopupSize(MINIMIZED_POPUP_SIZE_KEY);
+  }
+
+  function calculateOptimalPopupSize(view = window) {
+    const screen = view.screen || window.screen;
+    const availableWidth = Number.isFinite(screen.availWidth) ? screen.availWidth - 32 : POPUP_SIZE_LIMITS.maxWidth;
+    const availableHeight = Number.isFinite(screen.availHeight) ? screen.availHeight - 48 : POPUP_SIZE_LIMITS.maxHeight;
+    const configuredMaxWidth = Number.parseFloat(view.getComputedStyle(elements.app).maxWidth);
+    const contentWidth = Math.ceil(Math.max(
+      elements.app.scrollWidth,
+      elements.app.getBoundingClientRect().width,
+      Number.isFinite(configuredMaxWidth) ? configuredMaxWidth : 0,
+    ));
+    const contentHeight = Math.ceil(Math.max(elements.app.scrollHeight, elements.app.getBoundingClientRect().height));
+    return {
+      width: Math.round(clamp(contentWidth, POPUP_SIZE_LIMITS.minWidth, Math.min(POPUP_SIZE_LIMITS.maxWidth, availableWidth))),
+      height: Math.round(clamp(contentHeight + 8, OPTIMAL_POPUP_MIN_HEIGHT, Math.min(POPUP_SIZE_LIMITS.maxHeight, availableHeight))),
+    };
+  }
+
+  function calculateOptimalMinimizedPopupSize(view = window) {
+    const screen = view.screen || window.screen;
+    const availableWidth = Number.isFinite(screen.availWidth) ? screen.availWidth - 32 : POPUP_SIZE_LIMITS.maxWidth;
+    const availableHeight = Number.isFinite(screen.availHeight) ? screen.availHeight - 48 : POPUP_SIZE_LIMITS.maxHeight;
+    const appStyle = view.getComputedStyle(elements.app);
+    const headerHeight = Math.ceil(elements.app.querySelector(".app-header").getBoundingClientRect().height);
+    const verticalPadding = (Number.parseFloat(appStyle.paddingTop) || 0) + (Number.parseFloat(appStyle.paddingBottom) || 0);
+    const contentHeight = headerHeight + verticalPadding + 92;
+    return {
+      width: Math.round(clamp(320, POPUP_SIZE_LIMITS.minWidth, Math.min(POPUP_SIZE_LIMITS.maxWidth, availableWidth))),
+      height: Math.round(clamp(contentHeight, POPUP_SIZE_LIMITS.minHeight, Math.min(POPUP_SIZE_LIMITS.maxHeight, availableHeight))),
+    };
+  }
+
+  function fitPopupSizeToScreen(size, view = window) {
+    const screen = view.screen || window.screen;
+    const maximumWidth = Math.min(POPUP_SIZE_LIMITS.maxWidth, Math.max(POPUP_SIZE_LIMITS.minWidth, screen.availWidth - 32));
+    const maximumHeight = Math.min(POPUP_SIZE_LIMITS.maxHeight, Math.max(POPUP_SIZE_LIMITS.minHeight, screen.availHeight - 48));
+    return {
+      width: Math.round(clamp(size.width, POPUP_SIZE_LIMITS.minWidth, maximumWidth)),
+      height: Math.round(clamp(size.height, POPUP_SIZE_LIMITS.minHeight, maximumHeight)),
+    };
+  }
+
+  function getPreferredPopupSize(view = window) {
+    const savedSize = loadSavedPopupSize();
+    return savedSize ? fitPopupSizeToScreen(savedSize, view) : calculateOptimalPopupSize(view);
+  }
+
+  function savePopupSize(size, isMinimized = false) {
+    const normalized = normalizePopupSize(size);
+    if (!normalized) return;
+    const key = isMinimized ? MINIMIZED_POPUP_SIZE_KEY : POPUP_SIZE_KEY;
+    localStorage.setItem(key, JSON.stringify(normalized));
+    updatePopupSizeSettings();
+  }
+
+  function updatePopupSizeSettings() {
+    const savedSize = loadSavedPopupSize();
+    const savedMinimizedSize = loadSavedMinimizedPopupSize();
+    const automaticSize = calculateOptimalPopupSize(elements.app.ownerDocument.defaultView || window);
+    const automaticMinimizedSize = calculateOptimalMinimizedPopupSize(elements.app.ownerDocument.defaultView || window);
+    const minimizedSize = savedMinimizedSize || automaticMinimizedSize;
+    elements.popupSizeStatus.textContent = savedSize
+      ? `${savedSize.width} × ${savedSize.height}px（保存済み）`
+      : `${automaticSize.width} × ${automaticSize.height}px（自動）`;
+    elements.minimizedPopupSizeStatus.textContent = savedMinimizedSize
+      ? `${minimizedSize.width} × ${minimizedSize.height}px（保存済み）`
+      : `${minimizedSize.width} × ${minimizedSize.height}px（自動）`;
+    elements.resetPopupSizeButton.disabled = !savedSize;
+    elements.resetMinimizedPopupSizeButton.disabled = !savedMinimizedSize;
+  }
+
+  function openSettingsDialog() {
+    updatePopupSizeSettings();
+    elements.settingsDialog.showModal();
+  }
+
+  function schedulePopupSizeSave(view) {
+    if (!isPopupContext() || now() < suppressPopupSizeSaveUntil) return;
+    const sizeAtResize = { width: view.innerWidth, height: view.innerHeight };
+    const wasMinimizedAtResize = state.isMinimized;
+    window.clearTimeout(popupResizeSaveId);
+    popupResizeSaveId = window.setTimeout(() => {
+      if (!isPopupContext() || now() < suppressPopupSizeSaveUntil) return;
+      savePopupSize(sizeAtResize, wasMinimizedAtResize);
+      popupResizeSaveId = 0;
+    }, 350);
+  }
+
+  function cancelPendingPopupSizeSave() {
+    window.clearTimeout(popupResizeSaveId);
+    popupResizeSaveId = 0;
+  }
+
+  function resizePopupWindow(view, size) {
+    suppressPopupSizeSaveUntil = now() + 1000;
+    const frameWidth = Math.max(0, view.outerWidth - view.innerWidth);
+    const frameHeight = Math.max(0, view.outerHeight - view.innerHeight);
+    try { view.resizeTo(size.width + frameWidth, size.height + frameHeight); } catch {}
+  }
+
+  function applyPopupSize(view, size) {
+    cancelPendingPopupSizeSave();
+    resizePopupWindow(view, size);
+    view.requestAnimationFrame(() => resizePopupWindow(view, size));
+  }
+
+  function resetPopupSize() {
+    localStorage.removeItem(POPUP_SIZE_KEY);
+    preMinimizePopupSize = null;
+    updatePopupSizeSettings();
+    if (isPopupContext() && !state.isMinimized) {
+      const view = elements.app.ownerDocument.defaultView;
+      applyPopupSize(view, calculateOptimalPopupSize(view));
+    }
+    showToast("PiPサイズを自動設定に戻しました");
+  }
+
+  function resetMinimizedPopupSize() {
+    localStorage.removeItem(MINIMIZED_POPUP_SIZE_KEY);
+    updatePopupSizeSettings();
+    if (isPopupContext() && state.isMinimized) {
+      const view = elements.app.ownerDocument.defaultView;
+      applyPopupSize(view, fitPopupSizeToScreen(calculateOptimalMinimizedPopupSize(view), view));
+    }
+    showToast("最小化サイズを自動設定に戻しました");
+  }
+
+  function timerTabLabel(tab) {
+    const name = tab.id === state.activeTimerId ? state.taskName : tab.taskName;
+    return name.trim() || `タイマー ${tab.number}`;
+  }
+
+  function renderTimerTabs() {
+    snapshotActiveTimer();
+    const signature = JSON.stringify([
+      state.activeTimerId,
+      state.timerTabs.map((tab) => [tab.id, tab.taskName, tab.number]),
+    ]);
+    if (signature === timerTabsSignature) return;
+    timerTabsSignature = signature;
+    elements.timerTabList.replaceChildren();
+    state.timerTabs.forEach((tab) => {
+      const item = document.createElement("div");
+      item.className = "timer-workspace-tab";
+      item.classList.toggle("is-active", tab.id === state.activeTimerId);
+
+      const selectButton = document.createElement("button");
+      selectButton.type = "button";
+      selectButton.className = "timer-tab-select";
+      selectButton.dataset.timerId = tab.id;
+      selectButton.setAttribute("role", "tab");
+      selectButton.setAttribute("aria-controls", "timer-panel");
+      selectButton.setAttribute("aria-selected", String(tab.id === state.activeTimerId));
+      selectButton.textContent = timerTabLabel(tab);
+      selectButton.title = timerTabLabel(tab);
+      item.append(selectButton);
+
+      if (state.timerTabs.length > 1) {
+        const closeButton = document.createElement("button");
+        closeButton.type = "button";
+        closeButton.className = "timer-tab-close";
+        closeButton.dataset.closeTimerId = tab.id;
+        closeButton.setAttribute("aria-label", `${timerTabLabel(tab)}を閉じる`);
+        closeButton.textContent = "×";
+        item.append(closeButton);
+      }
+      elements.timerTabList.append(item);
+    });
+  }
+
+  function performSelectTimerTab(timerId) {
+    if (timerId === state.activeTimerId) return;
+    const nextTab = state.timerTabs.find((tab) => tab.id === timerId);
+    if (!nextTab) return;
+    if (state.isRunning) {
+      state.elapsedBeforeStartMs = getElapsedMs();
+      state.isRunning = false;
+      state.startedAt = 0;
+      stopTicking();
+    }
+    snapshotActiveTimer();
+    applyTimerTab(nextTab);
+    syncInputsFromDuration();
+    timerTabsSignature = "";
+    saveState();
+    render();
+  }
+
+  function performAddTimerTab() {
+    if (state.isRunning) {
+      state.elapsedBeforeStartMs = getElapsedMs();
+      state.isRunning = false;
+      state.startedAt = 0;
+      stopTicking();
+    }
+    snapshotActiveTimer();
+    const tab = createTimerTab(state.nextTimerNumber);
+    state.nextTimerNumber += 1;
+    state.timerTabs.push(tab);
+    applyTimerTab(tab);
+    syncInputsFromDuration();
+    timerTabsSignature = "";
+    saveState();
+    render();
+  }
+
+  function closeTimerNavigationConfirm() {
+    pendingTimerNavigation = null;
+    elements.timerNavigationConfirmOverlay.hidden = true;
+    if (timerNavigationConfirmPreviousFocus && typeof timerNavigationConfirmPreviousFocus.focus === "function") {
+      timerNavigationConfirmPreviousFocus.focus();
+    }
+    timerNavigationConfirmPreviousFocus = null;
+  }
+
+  function confirmTimerNavigation() {
+    if (!pendingTimerNavigation) return;
+    const action = pendingTimerNavigation;
+    closeTimerNavigationConfirm();
+    if (action.type === "select") performSelectTimerTab(action.timerId);
+    else performAddTimerTab();
+  }
+
+  function requestTimerNavigation(action) {
+    pendingTimerNavigation = action;
+    timerNavigationConfirmPreviousFocus = elements.app.ownerDocument.activeElement;
+    const isSelect = action.type === "select";
+    elements.timerNavigationConfirmMessage.textContent = isSelect
+      ? "現在のタイマーを一時停止した上で、別のタブへ移動してもよろしいですか？"
+      : "現在のタイマーを一時停止した上で、新しいタブを作成してもよろしいですか？";
+    elements.confirmTimerNavigationButton.textContent = isSelect ? "一時停止して移動" : "一時停止して作成";
+    elements.timerNavigationConfirmOverlay.hidden = false;
+    elements.confirmTimerNavigationButton.focus();
+  }
+
+  function selectTimerTab(timerId) {
+    if (timerId === state.activeTimerId) return;
+    if (state.isRunning) {
+      requestTimerNavigation({ type: "select", timerId });
+      return;
+    }
+    performSelectTimerTab(timerId);
+  }
+
+  function addTimerTab() {
+    if (state.isRunning) {
+      requestTimerNavigation({ type: "add" });
+      return;
+    }
+    performAddTimerTab();
+  }
+
+  function isTimerNavigationConfirmOpen() {
+    return !elements.timerNavigationConfirmOverlay.hidden;
+  }
+
+  function timerHasActivity(tab) {
+    return tab.id === state.activeTimerId
+      ? state.hasStarted || state.isRunning
+      : tab.hasStarted === true || tab.isRunning === true;
+  }
+
+  function removeTimerTab(timerId) {
+    const tab = state.timerTabs.find((item) => item.id === timerId);
+    if (!tab || state.timerTabs.length <= 1) return;
+    snapshotActiveTimer();
+    if (tab.id === state.activeTimerId && state.isRunning) stopTicking();
+    const index = state.timerTabs.indexOf(tab);
+    state.timerTabs.splice(index, 1);
+    if (tab.id === state.activeTimerId) {
+      applyTimerTab(state.timerTabs[Math.min(index, state.timerTabs.length - 1)]);
+      syncInputsFromDuration();
+    }
+    timerTabsSignature = "";
+    saveState();
+    render();
+  }
+
+  function closeTimerTabConfirm() {
+    pendingCloseTimerId = "";
+    elements.timerTabConfirmOverlay.hidden = true;
+    if (timerTabConfirmPreviousFocus && typeof timerTabConfirmPreviousFocus.focus === "function") {
+      timerTabConfirmPreviousFocus.focus();
+    }
+    timerTabConfirmPreviousFocus = null;
+  }
+
+  function confirmCloseTimerTab() {
+    if (!pendingCloseTimerId) return;
+    const timerId = pendingCloseTimerId;
+    closeTimerTabConfirm();
+    removeTimerTab(timerId);
+    showToast("タイマータブを削除しました");
+  }
+
+  function closeTimerTab(timerId) {
+    const tab = state.timerTabs.find((item) => item.id === timerId);
+    if (!tab || state.timerTabs.length <= 1) return;
+    snapshotActiveTimer();
+    if (!timerHasActivity(tab)) {
+      removeTimerTab(timerId);
+      return;
+    }
+    pendingCloseTimerId = timerId;
+    timerTabConfirmPreviousFocus = elements.app.ownerDocument.activeElement;
+    elements.timerTabConfirmMessage.textContent =
+      `「${timerTabLabel(tab)}」は開始済みです。計測内容を破棄して削除してもよろしいですか？`;
+    elements.timerTabConfirmOverlay.hidden = false;
+    elements.confirmTimerTabDeleteButton.focus();
+  }
+
+  function isTimerTabConfirmOpen() {
+    return !elements.timerTabConfirmOverlay.hidden;
+  }
+
+  function hasStartedTimer() {
+    snapshotActiveTimer();
+    return state.timerTabs.some(timerHasActivity);
+  }
+
   function updateModeUi() {
     elements.modeTabs.forEach((tab) => {
       const active = tab.dataset.mode === state.mode;
@@ -232,7 +747,6 @@
       finishCountdown();
       return;
     }
-    elements.recordDate.textContent = formatJapaneseDate();
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
     elements.timeDisplay.textContent = formatTime(getDisplayMs(), state.mode === MODES.COUNTDOWN ? "ceil" : "floor");
     elements.startPauseButton.textContent = isFinishedCountdown()
@@ -243,6 +757,7 @@
           ? "再開"
           : "開始";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
+    renderTimerTabs();
     getCurrentBody().classList.toggle("is-minimized", state.isMinimized && isPopupContext());
     elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "□" : "−";
     updateModeUi();
@@ -251,12 +766,19 @@
   }
 
   function startTimer() {
+    state.timerTabs.forEach((tab) => {
+      if (tab.id !== state.activeTimerId) {
+        tab.isRunning = false;
+        tab.startedAt = 0;
+      }
+    });
     if (state.mode === MODES.COUNTDOWN) {
       state.countdownDurationMs = getDurationFromInputs();
       if (state.finishedAt || state.elapsedBeforeStartMs >= state.countdownDurationMs) state.elapsedBeforeStartMs = 0;
       syncInputsFromDuration();
     }
     state.finishedAt = 0;
+    state.hasStarted = true;
     state.isRunning = true;
     state.startedAt = now();
     saveState();
@@ -270,6 +792,7 @@
     state.isRunning = false;
     state.startedAt = 0;
     stopTicking();
+    saveState();
     render();
   }
 
@@ -302,6 +825,7 @@
     state.startedAt = 0;
     state.elapsedBeforeStartMs = 0;
     state.finishedAt = 0;
+    state.hasStarted = false;
     state.taskName = "";
     stopTicking();
     if (state.mode === MODES.COUNTDOWN) {
@@ -317,25 +841,66 @@
     state.isRunning = false;
     state.startedAt = 0;
     state.finishedAt = now();
+    state.hasStarted = true;
     stopTicking();
+    saveState();
     playFinishSound();
     render();
   }
 
-  function switchMode(mode) {
+  function performModeSwitch(mode) {
     if (state.mode === mode) return;
-    pauseTimer();
+    if (state.isRunning) stopTicking();
+    state.isRunning = false;
+    state.startedAt = 0;
     state.mode = mode;
     state.elapsedBeforeStartMs = 0;
     state.finishedAt = 0;
+    state.hasStarted = false;
     saveState();
     render();
+  }
+
+  function closeModeSwitchConfirm() {
+    pendingMode = "";
+    elements.modeSwitchConfirmOverlay.hidden = true;
+    if (modeSwitchConfirmPreviousFocus && typeof modeSwitchConfirmPreviousFocus.focus === "function") {
+      modeSwitchConfirmPreviousFocus.focus();
+    }
+    modeSwitchConfirmPreviousFocus = null;
+  }
+
+  function confirmModeSwitch() {
+    if (!pendingMode) return;
+    const mode = pendingMode;
+    closeModeSwitchConfirm();
+    performModeSwitch(mode);
+  }
+
+  function switchMode(mode) {
+    if (state.mode === mode) return;
+    if (!state.hasStarted && !state.isRunning) {
+      performModeSwitch(mode);
+      return;
+    }
+    pendingMode = mode;
+    modeSwitchConfirmPreviousFocus = elements.app.ownerDocument.activeElement;
+    const modeName = mode === MODES.COUNTDOWN ? "カウントダウン" : "ストップウォッチ";
+    elements.modeSwitchConfirmMessage.textContent =
+      `現在の計測時間を破棄して「${modeName}」へ切り替えてもよろしいですか？`;
+    elements.modeSwitchConfirmOverlay.hidden = false;
+    elements.confirmModeSwitchButton.focus();
+  }
+
+  function isModeSwitchConfirmOpen() {
+    return !elements.modeSwitchConfirmOverlay.hidden;
   }
 
   function setCountdownDuration(seconds) {
     state.countdownDurationMs = seconds * 1000;
     state.elapsedBeforeStartMs = 0;
     state.finishedAt = 0;
+    state.hasStarted = false;
     syncInputsFromDuration();
     saveState();
     render();
@@ -367,14 +932,15 @@
     return names.slice(0, 10);
   }
 
-  function renderRecentTasks() {
-    elements.recentTaskList.replaceChildren();
+  function renderRecentTasks(list, input) {
+    loadRecords();
+    list.replaceChildren();
     const names = recentTaskNames();
     if (!names.length) {
       const empty = document.createElement("p");
       empty.className = "empty-message";
       empty.textContent = "履歴はまだありません";
-      elements.recentTaskList.append(empty);
+      list.append(empty);
       return;
     }
     names.forEach((name) => {
@@ -382,15 +948,15 @@
       button.type = "button";
       button.className = "recent-task-button";
       button.textContent = name;
-      button.addEventListener("click", () => { elements.taskInput.value = name; elements.taskInput.focus(); });
-      elements.recentTaskList.append(button);
+      button.addEventListener("click", () => { input.value = name; input.focus(); });
+      list.append(button);
     });
   }
 
   function openTaskDialog(recordAfterInput = false) {
     pendingRecordAfterTaskInput = recordAfterInput === true;
     elements.taskInput.value = state.taskName;
-    renderRecentTasks();
+    renderRecentTasks(elements.recentTaskList, elements.taskInput);
     elements.taskDialog.showModal();
     window.setTimeout(() => elements.taskInput.focus(), 0);
   }
@@ -458,24 +1024,105 @@
       task.textContent = record.taskName;
       duration.textContent = formatRecordDuration(record.durationMs);
       item.append(task, duration);
-      item.addEventListener("click", () => deleteHistoryRecord(record));
+      item.addEventListener("click", () => openEditHistoryDialog(record));
       elements.historyList.append(item);
     });
   }
 
+  function renderHistoryDateOptions(preferredDate = elements.historyDate.value) {
+    const today = localDateKey();
+    const availableDates = [...new Set([today, ...state.records.map((record) => record.date)])]
+      .sort((a, b) => b.localeCompare(a));
+    elements.historyDate.replaceChildren();
+    availableDates.forEach((date) => {
+      const option = document.createElement("option");
+      option.value = date;
+      option.textContent = formatHistoryDateLabel(date);
+      elements.historyDate.append(option);
+    });
+    elements.historyDate.value = availableDates.includes(preferredDate) ? preferredDate : today;
+  }
+
+  function openEditHistoryDialog(record) {
+    editingRecord = record;
+    const totalSeconds = Math.round(record.durationMs / 1000);
+    elements.editHoursInput.value = String(Math.floor(totalSeconds / 3600));
+    elements.editMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
+    elements.editSecondsInput.value = String(totalSeconds % 60);
+    elements.editTaskInput.value = record.taskName;
+    elements.editHistoryError.textContent = "";
+    elements.editHistoryDialog.showModal();
+    window.setTimeout(() => elements.editTaskInput.focus(), 0);
+  }
+
+  function updateHistoryRecord(event) {
+    event.preventDefault();
+    if (!editingRecord) return;
+    const taskName = elements.editTaskInput.value.trim();
+    const durationMs = normalizeDurationInputs(
+      [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput],
+      elements.editHistoryError,
+    );
+    if (durationMs === null) return;
+    if (!taskName) {
+      elements.editHistoryError.textContent = "タスク名を入力してください";
+      return;
+    }
+    if (durationMs < 1000) {
+      elements.editHistoryError.textContent = "作業時間を1秒以上入力してください";
+      return;
+    }
+    editingRecord.taskName = taskName.slice(0, 80);
+    editingRecord.durationMs = durationMs;
+    saveRecords();
+    elements.editHistoryDialog.close();
+    renderHistory();
+    showToast("作業履歴を変更しました");
+  }
+
   function deleteHistoryRecord(record) {
     const duration = formatRecordDuration(record.durationMs);
-    if (!window.confirm(`「${record.taskName}（${duration}）」を削除しますか？`)) return;
-    const recordIndex = state.records.findIndex((item) => item === record);
-    if (recordIndex < 0) return;
+    pendingDeleteRecordId = record.id || "";
+    pendingDeleteRecord = record;
+    confirmPreviousFocus = elements.app.ownerDocument.activeElement;
+    elements.confirmMessage.textContent = `「${record.taskName}（${duration}）」を削除します。`;
+    elements.confirmOverlay.hidden = false;
+    elements.confirmDeleteButton.focus();
+  }
+
+  function closeDeleteConfirm() {
+    pendingDeleteRecordId = "";
+    pendingDeleteRecord = null;
+    elements.confirmOverlay.hidden = true;
+    if (confirmPreviousFocus && typeof confirmPreviousFocus.focus === "function") {
+      confirmPreviousFocus.focus();
+    }
+    confirmPreviousFocus = null;
+  }
+
+  function isDeleteConfirmOpen() {
+    return !elements.confirmOverlay.hidden;
+  }
+
+  function confirmDeleteHistoryRecord() {
+    if (!pendingDeleteRecordId && !pendingDeleteRecord) return;
+    const recordIndex = state.records.findIndex((item) => item.id === pendingDeleteRecordId || item === pendingDeleteRecord);
+    if (recordIndex < 0) {
+      closeDeleteConfirm();
+      return;
+    }
     state.records.splice(recordIndex, 1);
+    closeDeleteConfirm();
+    if (elements.editHistoryDialog.open) elements.editHistoryDialog.close();
     saveRecords();
+    renderHistoryDateOptions();
     renderHistory();
     showToast("作業履歴を削除しました");
   }
 
   function openHistoryDialog() {
-    elements.historyDate.value = localDateKey();
+    loadRecords();
+    renderHistoryDateOptions(localDateKey());
     renderHistory();
     elements.historyDialog.showModal();
   }
@@ -487,20 +1134,62 @@
     elements.manualMinutesInput.value = "0";
     elements.manualSecondsInput.value = "0";
     elements.manualHistoryError.textContent = "";
+    renderRecentTasks(elements.manualRecentTaskList, elements.manualTaskInput);
     elements.addHistoryDialog.showModal();
     window.setTimeout(() => elements.manualTaskInput.focus(), 0);
+  }
+
+  function readDurationPart(input) {
+    const value = input.value.trim();
+    if (value === "") return 0;
+    if (!/^\d+$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  }
+
+  function normalizeDurationInputs(inputs, errorElement) {
+    const [hoursInput, minutesInput, secondsInput] = inputs;
+    const hours = readDurationPart(hoursInput);
+    const minutes = readDurationPart(minutesInput);
+    const seconds = readDurationPart(secondsInput);
+    if ([hours, minutes, seconds].includes(null)) {
+      errorElement.textContent = "作業時間は0以上の整数で入力してください";
+      return null;
+    }
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+    if (!Number.isSafeInteger(totalSeconds) || totalSeconds > Number.MAX_SAFE_INTEGER / 1000) {
+      errorElement.textContent = "作業時間の値が大きすぎます";
+      return null;
+    }
+    hoursInput.value = String(Math.floor(totalSeconds / 3600));
+    minutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
+    secondsInput.value = String(totalSeconds % 60);
+    errorElement.textContent = "";
+    return totalSeconds * 1000;
+  }
+
+  function normalizeManualDurationInputs() {
+    return normalizeDurationInputs(
+      [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput],
+      elements.manualHistoryError,
+    );
+  }
+
+  function normalizeEditDurationInputs() {
+    return normalizeDurationInputs(
+      [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput],
+      elements.editHistoryError,
+    );
   }
 
   function addManualHistory(event) {
     event.preventDefault();
     const taskName = elements.manualTaskInput.value.trim();
-    const hours = Math.min(99, normalizeSeconds(elements.manualHoursInput.value, 0));
-    const minutes = Math.min(59, normalizeSeconds(elements.manualMinutesInput.value, 0));
-    const seconds = Math.min(59, normalizeSeconds(elements.manualSecondsInput.value, 0));
-    const durationMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
+    const durationMs = normalizeManualDurationInputs();
 
-    if (!taskName || !elements.manualDate.value) {
-      elements.manualHistoryError.textContent = "日付とタスク名を入力してください";
+    if (durationMs === null) return;
+    if (!taskName) {
+      elements.manualHistoryError.textContent = "タスク名を入力してください";
       return;
     }
     if (durationMs < 1000) {
@@ -510,14 +1199,14 @@
 
     state.records.push({
       id: `${now()}-${Math.random().toString(16).slice(2)}`,
-      date: elements.manualDate.value,
+      date: localDateKey(),
       taskName: taskName.slice(0, 80),
       durationMs,
       mode: "manual",
       createdAt: new Date().toISOString(),
     });
     saveRecords();
-    elements.historyDate.value = elements.manualDate.value;
+    renderHistoryDateOptions(localDateKey());
     renderHistory();
     elements.addHistoryDialog.close();
     elements.statusText.textContent = "作業履歴を追加しました";
@@ -570,33 +1259,60 @@
   function openPopupWindow() {
     const url = new URL(window.location.href);
     url.searchParams.set("popup", "1");
-    const handle = window.open(url.toString(), "simpleTimerPopup", "popup=yes,width=360,height=580,left=120,top=120,resizable=yes,scrollbars=yes");
+    const size = getPreferredPopupSize(window);
+    const handle = window.open(url.toString(), "simpleTimerPopup", `popup=yes,width=${size.width},height=${size.height},left=120,top=120,resizable=yes,scrollbars=yes`);
     elements.statusText.textContent = handle ? "小窓を開きました" : "ポップアップがブロックされました";
     if (handle) handle.focus();
   }
 
-  function resizePopup(width, height) { if (isPopupContext()) { try { elements.app.ownerDocument.defaultView.resizeTo(width, height); } catch {} } }
   function toggleMinimized() {
     if (!isPopupContext()) return;
-    state.isMinimized = !state.isMinimized;
-    resizePopup(state.isMinimized ? 280 : 360, state.isMinimized ? 190 : 580);
+    const view = elements.app.ownerDocument.defaultView;
+    if (!state.isMinimized) {
+      preMinimizePopupSize = { width: view.innerWidth, height: view.innerHeight };
+      cancelPendingPopupSizeSave();
+      savePopupSize(preMinimizePopupSize, false);
+      state.isMinimized = true;
+      render();
+      const minimizedSize = loadSavedMinimizedPopupSize() || calculateOptimalMinimizedPopupSize(view);
+      applyPopupSize(view, fitPopupSizeToScreen(minimizedSize, view));
+      return;
+    }
+    const currentMinimizedSize = { width: view.innerWidth, height: view.innerHeight };
+    cancelPendingPopupSizeSave();
+    savePopupSize(currentMinimizedSize, true);
+    state.isMinimized = false;
     render();
+    const restoreSize = preMinimizePopupSize || loadSavedPopupSize() || calculateOptimalPopupSize(view);
+    preMinimizePopupSize = null;
+    applyPopupSize(view, fitPopupSizeToScreen(restoreSize, view));
   }
 
   async function openDocumentPictureInPicture() {
     const pip = window.documentPictureInPicture;
     if (!pip || typeof pip.requestWindow !== "function") return false;
     try {
-      const pipWindow = await pip.requestWindow({ width: 360, height: 580 });
+      const hadSavedSize = Boolean(loadSavedPopupSize());
+      const pipWindow = await pip.requestWindow(getPreferredPopupSize(window));
       const styleLink = pipWindow.document.createElement("link");
       styleLink.rel = "stylesheet"; styleLink.href = "./styles.css";
       pipWindow.document.head.append(styleLink);
       pipWindow.document.body.className = "is-popup";
       pipWindow.document.body.append(elements.app);
       pipWindow.document.addEventListener("keydown", handleKeyboard);
-      pipWindow.addEventListener("resize", scheduleFitControlButtonText);
+      suppressPopupSizeSaveUntil = now() + 1200;
+      pipWindow.addEventListener("resize", () => {
+        scheduleFitControlButtonText();
+        schedulePopupSizeSave(pipWindow);
+      });
+      if (!hadSavedSize) {
+        const fitToContent = () => resizePopupWindow(pipWindow, calculateOptimalPopupSize(pipWindow));
+        styleLink.addEventListener("load", () => pipWindow.requestAnimationFrame(fitToContent), { once: true });
+        pipWindow.requestAnimationFrame(() => pipWindow.requestAnimationFrame(fitToContent));
+      }
       pipWindow.addEventListener("pagehide", () => {
         state.isMinimized = false;
+        preMinimizePopupSize = null;
         document.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
         document.body.append(elements.app); render();
       });
@@ -607,7 +1323,35 @@
   async function openCompactWindow() { if (!(await openDocumentPictureInPicture())) openPopupWindow(); }
 
   function handleKeyboard(event) {
-    if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.taskDialog.open || elements.historyDialog.open) return;
+    if (isTimerNavigationConfirmOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeTimerNavigationConfirm();
+      }
+      return;
+    }
+    if (isModeSwitchConfirmOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeModeSwitchConfirm();
+      }
+      return;
+    }
+    if (isTimerTabConfirmOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeTimerTabConfirm();
+      }
+      return;
+    }
+    if (isDeleteConfirmOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDeleteConfirm();
+      }
+      return;
+    }
+    if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.app.ownerDocument.querySelector("dialog[open]")) return;
     if (event.code === "Space") {
       event.preventDefault();
       isFinishedCountdown() ? moveToNextTask() : state.isRunning ? pauseTimer() : startTimer();
@@ -616,10 +1360,38 @@
   }
 
   function bindEvents() {
+    elements.timerTabList.addEventListener("click", (event) => {
+      const closeButton = event.target.closest("[data-close-timer-id]");
+      if (closeButton) {
+        closeTimerTab(closeButton.dataset.closeTimerId);
+        return;
+      }
+      const selectButton = event.target.closest("[data-timer-id]");
+      if (selectButton) selectTimerTab(selectButton.dataset.timerId);
+    });
+    elements.addTimerTabButton.addEventListener("click", addTimerTab);
+    elements.settingsButton.addEventListener("click", openSettingsDialog);
+    elements.resetPopupSizeButton.addEventListener("click", resetPopupSize);
+    elements.resetMinimizedPopupSizeButton.addEventListener("click", resetMinimizedPopupSize);
+    elements.cancelTimerNavigationButton.addEventListener("click", closeTimerNavigationConfirm);
+    elements.confirmTimerNavigationButton.addEventListener("click", confirmTimerNavigation);
+    elements.timerNavigationConfirmOverlay.addEventListener("click", (event) => {
+      if (event.target === elements.timerNavigationConfirmOverlay) closeTimerNavigationConfirm();
+    });
+    elements.cancelModeSwitchButton.addEventListener("click", closeModeSwitchConfirm);
+    elements.confirmModeSwitchButton.addEventListener("click", confirmModeSwitch);
+    elements.modeSwitchConfirmOverlay.addEventListener("click", (event) => {
+      if (event.target === elements.modeSwitchConfirmOverlay) closeModeSwitchConfirm();
+    });
+    elements.cancelTimerTabDeleteButton.addEventListener("click", closeTimerTabConfirm);
+    elements.confirmTimerTabDeleteButton.addEventListener("click", confirmCloseTimerTab);
+    elements.timerTabConfirmOverlay.addEventListener("click", (event) => {
+      if (event.target === elements.timerTabConfirmOverlay) closeTimerTabConfirm();
+    });
     elements.modeTabs.forEach((tab) => tab.addEventListener("click", () => switchMode(tab.dataset.mode)));
     [elements.hoursInput, elements.minutesInput, elements.secondsInput].forEach((input) => input.addEventListener("change", () => {
       state.countdownDurationMs = getDurationFromInputs();
-      state.elapsedBeforeStartMs = 0; state.finishedAt = 0;
+      state.elapsedBeforeStartMs = 0; state.finishedAt = 0; state.hasStarted = false;
       syncInputsFromDuration(); saveState(); render();
     }));
     elements.presetButtons.forEach((button) => button.addEventListener("click", () => setCountdownDuration(Number.parseInt(button.dataset.seconds, 10))));
@@ -635,11 +1407,29 @@
     });
     elements.taskDialog.addEventListener("close", () => { pendingRecordAfterTaskInput = false; });
     elements.historyButton.addEventListener("click", openHistoryDialog);
+    elements.historyDialog.addEventListener("close", () => { if (isDeleteConfirmOpen()) closeDeleteConfirm(); });
     elements.historyDate.addEventListener("change", renderHistory);
     elements.unitButtons.forEach((button) => button.addEventListener("click", () => { state.historyUnit = button.dataset.unit; renderHistory(); }));
     elements.addHistoryButton.addEventListener("click", openAddHistoryDialog);
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
+    [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput]
+      .forEach((input) => input.addEventListener("change", normalizeManualDurationInputs));
+    [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput]
+      .forEach((input) => input.addEventListener("change", normalizeEditDurationInputs));
+    elements.editHistoryForm.addEventListener("submit", updateHistoryRecord);
+    elements.editHistoryDialog.addEventListener("close", () => { editingRecord = null; });
+    elements.editDeleteButton.addEventListener("click", () => {
+      if (!editingRecord) return;
+      const record = editingRecord;
+      elements.editHistoryDialog.close();
+      deleteHistoryRecord(record);
+    });
     elements.exportHistoryButton.addEventListener("click", exportAllHistory);
+    elements.cancelDeleteButton.addEventListener("click", closeDeleteConfirm);
+    elements.confirmDeleteButton.addEventListener("click", confirmDeleteHistoryRecord);
+    elements.confirmOverlay.addEventListener("click", (event) => {
+      if (event.target === elements.confirmOverlay) closeDeleteConfirm();
+    });
     elements.closeDialogButtons.forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
     elements.startPauseButton.addEventListener("pointerdown", handleTimerPointerDown);
     elements.startPauseButton.addEventListener("click", handleTimerClick);
@@ -649,14 +1439,28 @@
     elements.minimizeButton.addEventListener("click", toggleMinimized);
     document.addEventListener("keydown", handleKeyboard);
     window.addEventListener("resize", scheduleFitControlButtonText);
+    window.addEventListener("resize", () => schedulePopupSizeSave(window));
+    window.addEventListener("beforeunload", (event) => {
+      if (!hasStartedTimer()) return;
+      saveState();
+      event.preventDefault();
+      event.returnValue = "";
+    });
   }
 
   function initialize() {
     loadState();
-    elements.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
+    const isPopup = new URLSearchParams(location.search).has("popup");
+    elements.body.classList.toggle("is-popup", isPopup);
+    if (isPopup) suppressPopupSizeSaveUntil = now() + 1200;
     syncInputsFromDuration();
     bindEvents();
+    updateDateTime();
+    window.setInterval(updateDateTime, 250);
     render();
+    if (isPopup) {
+      window.requestAnimationFrame(() => applyPopupSize(window, getPreferredPopupSize(window)));
+    }
   }
 
   initialize();
