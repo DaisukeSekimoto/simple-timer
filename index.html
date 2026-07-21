@@ -17,6 +17,9 @@
         </div>
         <div class="window-actions">
           <button id="history-button" class="secondary-button header-button" type="button">履歴</button>
+          <button id="settings-button" class="icon-button" type="button" aria-label="設定" title="設定">
+            <span aria-hidden="true">⚙</span>
+          </button>
           <button id="minimize-button" class="icon-button minimize-button" type="button" aria-label="最小化" title="最小化">
             <span aria-hidden="true">−</span>
           </button>
@@ -132,6 +135,42 @@
         </div>
         <button class="primary-button modal-submit" type="submit">決定</button>
       </form>
+    </dialog>
+
+    <dialog id="settings-dialog" class="modal">
+      <section class="modal-card settings-card">
+        <div class="modal-header">
+          <h2>設定</h2>
+          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+        </div>
+        <section class="settings-section" aria-labelledby="popup-size-settings-title">
+          <h3 id="popup-size-settings-title">ピクチャーインピクチャーのサイズ</h3>
+          <p class="settings-description">各表示状態でウィンドウのサイズを変更すると、次回からそのサイズで開きます。</p>
+          <div class="settings-table-wrap">
+            <table class="settings-table">
+              <thead>
+                <tr>
+                  <th scope="col">表示状態</th>
+                  <th scope="col">使用するサイズ</th>
+                  <th scope="col">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">通常</th>
+                  <td id="popup-size-status"></td>
+                  <td><button id="reset-popup-size-button" class="secondary-button settings-reset-button" type="button">リセット</button></td>
+                </tr>
+                <tr>
+                  <th scope="row">最小化</th>
+                  <td id="minimized-popup-size-status"></td>
+                  <td><button id="reset-minimized-popup-size-button" class="secondary-button settings-reset-button" type="button">リセット</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
     </dialog>
 
     <dialog id="history-dialog" class="modal">
