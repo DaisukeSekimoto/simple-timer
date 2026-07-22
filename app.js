@@ -495,7 +495,7 @@
     const timerHeight = isCurrentlyMinimized
       ? elements.timeDisplay.getBoundingClientRect().height + elements.cumulativeTimeDisplay.getBoundingClientRect().height
       : 96;
-    const contentHeight = headerHeight + timerHeight + verticalPadding + 12;
+    const contentHeight = headerHeight + timerHeight + verticalPadding + 4;
     const contentWidth = isCurrentlyMinimized ? header.scrollWidth + horizontalPadding : 360;
     const size = {
       width: Math.round(clamp(contentWidth, POPUP_SIZE_LIMITS.minWidth, Math.min(POPUP_SIZE_LIMITS.maxWidth, availableWidth))),

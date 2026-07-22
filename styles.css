@@ -851,6 +851,10 @@ h1 {
   background: transparent;
 }
 
+.is-popup.is-minimized .app-header {
+  margin-bottom: 2px;
+}
+
 .is-popup.is-minimized .mode-tabs,
 .is-popup.is-minimized .timer-workspace-tabs,
 .is-popup.is-minimized .timer-form,
@@ -861,12 +865,12 @@ h1 {
 }
 
 .is-popup.is-minimized .time-display {
-  padding: 10px 8px 12px;
+  padding: 10px 8px 3px;
   font-size: 3.4rem;
 }
 
 .is-popup.is-minimized .cumulative-time-display {
-  margin: -5px 0 8px;
+  margin: 0;
   font-size: 0.74rem;
 }
 
