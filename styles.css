@@ -34,6 +34,12 @@ body {
     sans-serif;
 }
 
+body.is-popup {
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 button,
 input,
 select {
@@ -150,6 +156,15 @@ h1 {
 
 .minimize-button {
   display: none;
+}
+
+.compact-start-pause-button {
+  display: none;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 0 8px;
+  font-size: 0.76rem;
+  white-space: nowrap;
 }
 
 .timer-workspace-tabs {
@@ -287,6 +302,36 @@ h1 {
   line-height: 1;
   text-align: center;
   letter-spacing: 0;
+}
+
+.cumulative-time-display {
+  margin: -9px 0 16px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cumulative-time-display[hidden] {
+  display: none;
+}
+
+.additional-countdown-button {
+  display: block;
+  min-height: 32px;
+  margin: -8px auto 14px;
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.additional-countdown-button[hidden] {
+  display: none;
 }
 
 .timer-form {
@@ -498,6 +543,11 @@ h1 {
   gap: 10px;
 }
 
+.settings-section + .settings-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
 .settings-description {
   margin: 0;
   color: var(--muted);
@@ -630,6 +680,10 @@ h1 {
   gap: 8px;
 }
 
+.resume-history-button {
+  width: 100%;
+}
+
 .confirm-overlay {
   position: fixed;
   z-index: 20;
@@ -750,6 +804,7 @@ h1 {
 
 .is-popup .app {
   width: 100%;
+  margin: 0;
   padding: 10px;
 }
 
@@ -759,7 +814,7 @@ h1 {
 
 .is-popup .time-display {
   padding-top: 18px;
-  font-size: clamp(2.7rem, 18vw, 4.1rem);
+  font-size: 4.1rem;
 }
 
 .is-popup .app-header {
@@ -780,8 +835,14 @@ h1 {
   min-height: 190px;
 }
 
+.is-popup.is-minimized {
+  min-width: 0;
+}
+
 .is-popup.is-minimized .app {
-  max-width: 320px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   padding: 10px;
 }
 
@@ -794,13 +855,29 @@ h1 {
 .is-popup.is-minimized .timer-workspace-tabs,
 .is-popup.is-minimized .timer-form,
 .is-popup.is-minimized .control-row,
+.is-popup.is-minimized .additional-countdown-button,
 .is-popup.is-minimized #history-button {
   display: none;
 }
 
 .is-popup.is-minimized .time-display {
   padding: 10px 8px 12px;
-  font-size: clamp(2.5rem, 18vw, 3.4rem);
+  font-size: 3.4rem;
+}
+
+.is-popup.is-minimized .cumulative-time-display {
+  margin: -5px 0 8px;
+  font-size: 0.74rem;
+}
+
+.is-popup.is-minimized .record-date {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.is-popup.is-minimized .compact-start-pause-button {
+  display: inline-grid;
+  place-items: center;
 }
 
 @keyframes flash {

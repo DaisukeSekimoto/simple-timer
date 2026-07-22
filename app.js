@@ -3,6 +3,7 @@
   const RECORDS_KEY = "simple-timer-records";
   const POPUP_SIZE_KEY = "simple-timer-popup-size";
   const MINIMIZED_POPUP_SIZE_KEY = "simple-timer-minimized-popup-size";
+  const DEFAULT_MODE_KEY = "simple-timer-default-mode";
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
   const TICK_INTERVAL_MS = 250;
@@ -17,6 +18,8 @@
     recordDate: document.querySelector("#record-date"),
     toast: document.querySelector("#toast"),
     timeDisplay: document.querySelector("#time-display"),
+    cumulativeTimeDisplay: document.querySelector("#cumulative-time-display"),
+    additionalCountdownButton: document.querySelector("#additional-countdown-button"),
     popupButton: document.querySelector("#popup-button"),
     minimizeButton: document.querySelector("#minimize-button"),
     historyButton: document.querySelector("#history-button"),
@@ -26,6 +29,7 @@
     resetPopupSizeButton: document.querySelector("#reset-popup-size-button"),
     minimizedPopupSizeStatus: document.querySelector("#minimized-popup-size-status"),
     resetMinimizedPopupSizeButton: document.querySelector("#reset-minimized-popup-size-button"),
+    defaultModeSelect: document.querySelector("#default-mode-select"),
     timerTabList: document.querySelector("#timer-tab-list"),
     addTimerTabButton: document.querySelector("#add-timer-tab-button"),
     timerTabConfirmOverlay: document.querySelector("#timer-tab-confirm-overlay"),
@@ -81,8 +85,10 @@
     unitButtons: Array.from(document.querySelectorAll(".unit-button")),
     closeDialogButtons: Array.from(document.querySelectorAll(".close-dialog")),
     startPauseButton: document.querySelector("#start-pause-button"),
+    compactStartPauseButton: document.querySelector("#compact-start-pause-button"),
     resetButton: document.querySelector("#reset-button"),
     nextTaskButton: document.querySelector("#next-task-button"),
+    resumeHistoryButton: document.querySelector("#resume-history-button"),
   };
 
   const state = {
@@ -90,6 +96,7 @@
     isRunning: false,
     startedAt: 0,
     elapsedBeforeStartMs: 0,
+    countdownSessionStartElapsedMs: 0,
     countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
     taskName: "",
     finishedAt: 0,
@@ -123,6 +130,10 @@
   let popupResizeSaveId = 0;
   let suppressPopupSizeSaveUntil = 0;
   let preMinimizePopupSize = null;
+  let resetPreviousDayState = false;
+  let activeStateDate = localDateKey();
+  let popupFitFrame = 0;
+  let popupFitSignature = "";
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -132,6 +143,8 @@
   }
 
   function updateDateTime(date = new Date()) {
+    const dateKey = localDateKey(date);
+    if (dateKey !== activeStateDate && state.timerTabs.length) resetTimersForNewDay(dateKey);
     const currentSecond = Math.floor(date.getTime() / 1000);
     if (currentSecond === displayedClockSecond) return;
     displayedClockSecond = currentSecond;
@@ -160,6 +173,20 @@
     );
   }
 
+  function resetTimersForNewDay(dateKey = localDateKey()) {
+    stopTicking();
+    const firstTab = createTimerTab(1);
+    state.timerTabs = [firstTab];
+    state.nextTimerNumber = 2;
+    applyTimerTab(firstTab);
+    activeStateDate = dateKey;
+    timerTabsSignature = "";
+    syncInputsFromDuration();
+    saveState();
+    render();
+    showToast("日付が変わったため計測途中データをリセットしました");
+  }
+
   function formatHistoryDateLabel(dateKey) {
     const [year, month, day] = dateKey.split("-").map(Number);
     const date = new Date(year, month - 1, day);
@@ -173,15 +200,21 @@
     return {
       id: `${now()}-${Math.random().toString(16).slice(2)}`,
       number,
-      mode: MODES.COUNTDOWN,
+      mode: getDefaultMode(),
       isRunning: false,
       startedAt: 0,
       elapsedBeforeStartMs: 0,
+      countdownSessionStartElapsedMs: 0,
       countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
       taskName: "",
       finishedAt: 0,
       hasStarted: false,
     };
+  }
+
+  function getDefaultMode() {
+    const savedMode = localStorage.getItem(DEFAULT_MODE_KEY);
+    return Object.values(MODES).includes(savedMode) ? savedMode : MODES.COUNTDOWN;
   }
 
   function isValidTimerTab(tab) {
@@ -199,6 +232,7 @@
     tab.isRunning = state.isRunning;
     tab.startedAt = state.startedAt;
     tab.elapsedBeforeStartMs = getElapsedMs();
+    tab.countdownSessionStartElapsedMs = state.countdownSessionStartElapsedMs;
     tab.countdownDurationMs = state.countdownDurationMs;
     tab.taskName = state.taskName;
     tab.finishedAt = state.finishedAt;
@@ -211,6 +245,9 @@
     state.isRunning = false;
     state.startedAt = 0;
     state.elapsedBeforeStartMs = tab.elapsedBeforeStartMs;
+    state.countdownSessionStartElapsedMs = Number.isFinite(tab.countdownSessionStartElapsedMs)
+      ? Math.min(tab.countdownSessionStartElapsedMs, tab.elapsedBeforeStartMs)
+      : 0;
     state.countdownDurationMs = tab.countdownDurationMs;
     state.taskName = tab.taskName;
     state.finishedAt = tab.finishedAt || 0;
@@ -220,13 +257,18 @@
   function loadState() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      const isFromToday = typeof saved.savedDate !== "string" || saved.savedDate === localDateKey();
+      resetPreviousDayState = typeof saved.savedDate === "string" && !isFromToday;
       const savedTabs = Array.isArray(saved.timerTabs) ? saved.timerTabs.filter(isValidTimerTab) : [];
-      if (savedTabs.length) {
+      if (isFromToday && savedTabs.length) {
         state.timerTabs = savedTabs.map((tab) => ({
           ...tab,
           taskName: tab.taskName.slice(0, 80),
           isRunning: false,
           startedAt: 0,
+          countdownSessionStartElapsedMs: Number.isFinite(tab.countdownSessionStartElapsedMs)
+            ? Math.min(tab.countdownSessionStartElapsedMs, tab.elapsedBeforeStartMs)
+            : 0,
           hasStarted: tab.hasStarted === true || tab.elapsedBeforeStartMs > 0 || tab.finishedAt > 0,
         }));
         state.nextTimerNumber = Math.max(...state.timerTabs.map((tab) => tab.number)) + 1;
@@ -234,11 +276,13 @@
         applyTimerTab(activeTab);
       } else {
         const firstTab = createTimerTab(1);
-        if (Object.values(MODES).includes(saved.mode)) firstTab.mode = saved.mode;
-        if (Number.isFinite(saved.countdownDurationMs) && saved.countdownDurationMs > 0) {
-          firstTab.countdownDurationMs = saved.countdownDurationMs;
+        if (isFromToday) {
+          if (Object.values(MODES).includes(saved.mode)) firstTab.mode = saved.mode;
+          if (Number.isFinite(saved.countdownDurationMs) && saved.countdownDurationMs > 0) {
+            firstTab.countdownDurationMs = saved.countdownDurationMs;
+          }
+          if (typeof saved.taskName === "string") firstTab.taskName = saved.taskName.slice(0, 80);
         }
-        if (typeof saved.taskName === "string") firstTab.taskName = saved.taskName.slice(0, 80);
         state.timerTabs = [firstTab];
         state.nextTimerNumber = 2;
         applyTimerTab(firstTab);
@@ -257,6 +301,7 @@
   function saveState() {
     snapshotActiveTimer();
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      savedDate: activeStateDate,
       activeTimerId: state.activeTimerId,
       nextTimerNumber: state.nextTimerNumber,
       timerTabs: state.timerTabs,
@@ -290,14 +335,17 @@
   }
 
   function getRecordedElapsedMs() {
-    const elapsed = getElapsedMs();
-    return state.mode === MODES.COUNTDOWN ? Math.min(state.countdownDurationMs, elapsed) : elapsed;
+    return getElapsedMs();
+  }
+
+  function getCountdownSessionElapsedMs() {
+    return Math.max(0, getElapsedMs() - state.countdownSessionStartElapsedMs);
   }
 
   function getDisplayMs() {
     return state.mode === MODES.STOPWATCH
       ? getElapsedMs()
-      : Math.max(0, state.countdownDurationMs - getElapsedMs());
+      : Math.max(0, state.countdownDurationMs - getCountdownSessionElapsedMs());
   }
 
   function normalizeSeconds(value, fallback) {
@@ -347,6 +395,45 @@
   function getCurrentBody() { return elements.app.ownerDocument.body; }
   function isPopupContext() { return getCurrentBody().classList.contains("is-popup"); }
 
+  function fitPopupContentToWindow() {
+    if (!isPopupContext()) {
+      elements.app.style.zoom = "";
+      elements.app.style.width = "";
+      elements.app.style.maxWidth = "";
+      popupFitSignature = "";
+      return;
+    }
+    const view = elements.app.ownerDocument.defaultView;
+    const signature = JSON.stringify([
+      view.innerWidth,
+      state.isMinimized,
+      state.mode,
+      state.finishedAt > 0,
+      state.timerTabs.length,
+      elements.app.ownerDocument.querySelectorAll("dialog[open]").length,
+    ]);
+    if (signature === popupFitSignature) return;
+    popupFitSignature = signature;
+    elements.app.style.zoom = "1";
+    elements.app.style.width = "100%";
+    elements.app.style.maxWidth = "none";
+    const baseWidth = state.isMinimized ? 320 : 430;
+    const widthScale = (view.innerWidth - 2) / baseWidth;
+    const scale = clamp(Math.min(1, widthScale), 0.25, 1);
+    // 縮小時は基準幅のレイアウト全体を一度だけ拡縮する。
+    // 描画後の幅は baseWidth * scale となり、PiPの横幅に収まる。
+    elements.app.style.width = scale < 0.995 ? `${baseWidth}px` : "100%";
+    elements.app.style.zoom = scale < 0.995 ? scale.toFixed(3) : "1";
+    getCurrentBody().classList.toggle("is-content-scaled", scale < 0.995);
+  }
+
+  function scheduleFitPopupContent() {
+    if (!isPopupContext()) return;
+    const view = elements.app.ownerDocument.defaultView;
+    view.cancelAnimationFrame(popupFitFrame);
+    popupFitFrame = view.requestAnimationFrame(fitPopupContentToWindow);
+  }
+
   function clamp(value, minimum, maximum) {
     return Math.min(maximum, Math.max(minimum, value));
   }
@@ -394,17 +481,28 @@
   }
 
   function calculateOptimalMinimizedPopupSize(view = window) {
+    const previousZoom = elements.app.style.zoom;
+    elements.app.style.zoom = "1";
     const screen = view.screen || window.screen;
     const availableWidth = Number.isFinite(screen.availWidth) ? screen.availWidth - 32 : POPUP_SIZE_LIMITS.maxWidth;
     const availableHeight = Number.isFinite(screen.availHeight) ? screen.availHeight - 48 : POPUP_SIZE_LIMITS.maxHeight;
     const appStyle = view.getComputedStyle(elements.app);
-    const headerHeight = Math.ceil(elements.app.querySelector(".app-header").getBoundingClientRect().height);
+    const header = elements.app.querySelector(".app-header");
+    const headerHeight = Math.ceil(header.getBoundingClientRect().height);
     const verticalPadding = (Number.parseFloat(appStyle.paddingTop) || 0) + (Number.parseFloat(appStyle.paddingBottom) || 0);
-    const contentHeight = headerHeight + verticalPadding + 92;
-    return {
-      width: Math.round(clamp(320, POPUP_SIZE_LIMITS.minWidth, Math.min(POPUP_SIZE_LIMITS.maxWidth, availableWidth))),
+    const horizontalPadding = (Number.parseFloat(appStyle.paddingLeft) || 0) + (Number.parseFloat(appStyle.paddingRight) || 0);
+    const isCurrentlyMinimized = state.isMinimized && isPopupContext();
+    const timerHeight = isCurrentlyMinimized
+      ? elements.timeDisplay.getBoundingClientRect().height + elements.cumulativeTimeDisplay.getBoundingClientRect().height
+      : 96;
+    const contentHeight = headerHeight + timerHeight + verticalPadding + 12;
+    const contentWidth = isCurrentlyMinimized ? header.scrollWidth + horizontalPadding : 360;
+    const size = {
+      width: Math.round(clamp(contentWidth, POPUP_SIZE_LIMITS.minWidth, Math.min(POPUP_SIZE_LIMITS.maxWidth, availableWidth))),
       height: Math.round(clamp(contentHeight, POPUP_SIZE_LIMITS.minHeight, Math.min(POPUP_SIZE_LIMITS.maxHeight, availableHeight))),
     };
+    elements.app.style.zoom = previousZoom;
+    return size;
   }
 
   function fitPopupSizeToScreen(size, view = window) {
@@ -447,6 +545,7 @@
   }
 
   function openSettingsDialog() {
+    elements.defaultModeSelect.value = getDefaultMode();
     updatePopupSizeSettings();
     elements.settingsDialog.showModal();
   }
@@ -707,6 +806,9 @@
   function updateStatus() {
     if (state.finishedAt) elements.statusText.textContent = "完了";
     else if (state.isRunning) elements.statusText.textContent = state.mode === MODES.COUNTDOWN ? "集中時間を計測中" : "作業時間を計測中";
+    else if (state.mode === MODES.COUNTDOWN && state.elapsedBeforeStartMs > 0 && getCountdownSessionElapsedMs() === 0) {
+      elements.statusText.textContent = "累計時間を保持して待機中";
+    }
     else if (state.elapsedBeforeStartMs > 0) elements.statusText.textContent = "一時停止中";
     else elements.statusText.textContent = "待機中";
   }
@@ -734,6 +836,7 @@
   function fitControlButtonText() {
     fitButtonText(elements.startPauseButton);
     fitButtonText(elements.nextTaskButton);
+    fitButtonText(elements.compactStartPauseButton);
   }
 
   function scheduleFitControlButtonText() {
@@ -749,11 +852,25 @@
     }
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
     elements.timeDisplay.textContent = formatTime(getDisplayMs(), state.mode === MODES.COUNTDOWN ? "ceil" : "floor");
-    elements.startPauseButton.textContent = isFinishedCountdown()
+    elements.cumulativeTimeDisplay.hidden = state.mode !== MODES.COUNTDOWN;
+    elements.cumulativeTimeDisplay.textContent = `累計 ${formatTime(getElapsedMs())}`;
+    elements.additionalCountdownButton.hidden = !isFinishedCountdown();
+    const canResumeCurrentSession = state.mode === MODES.STOPWATCH
+      ? state.elapsedBeforeStartMs > 0
+      : getCountdownSessionElapsedMs() > 0;
+    const primaryActionLabel = isFinishedCountdown()
       ? "次の作業に移る\n（履歴へ追加）"
       : state.isRunning
         ? "一時停止"
-        : state.elapsedBeforeStartMs > 0
+        : canResumeCurrentSession
+          ? "再開"
+          : "開始";
+    elements.startPauseButton.textContent = primaryActionLabel;
+    elements.compactStartPauseButton.textContent = isFinishedCountdown()
+      ? "履歴追加"
+      : state.isRunning
+        ? "一時停止"
+        : canResumeCurrentSession
           ? "再開"
           : "開始";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
@@ -763,6 +880,7 @@
     updateModeUi();
     updateStatus();
     scheduleFitControlButtonText();
+    scheduleFitPopupContent();
   }
 
   function startTimer() {
@@ -774,7 +892,9 @@
     });
     if (state.mode === MODES.COUNTDOWN) {
       state.countdownDurationMs = getDurationFromInputs();
-      if (state.finishedAt || state.elapsedBeforeStartMs >= state.countdownDurationMs) state.elapsedBeforeStartMs = 0;
+      if (state.finishedAt || getCountdownSessionElapsedMs() >= state.countdownDurationMs) {
+        state.countdownSessionStartElapsedMs = getElapsedMs();
+      }
       syncInputsFromDuration();
     }
     state.finishedAt = 0;
@@ -794,6 +914,13 @@
     stopTicking();
     saveState();
     render();
+  }
+
+  function startAdditionalCountdown() {
+    if (!isFinishedCountdown()) return;
+    state.countdownSessionStartElapsedMs = getElapsedMs();
+    state.finishedAt = 0;
+    startTimer();
   }
 
   function toggleTimer() {
@@ -824,6 +951,7 @@
     state.isRunning = false;
     state.startedAt = 0;
     state.elapsedBeforeStartMs = 0;
+    state.countdownSessionStartElapsedMs = 0;
     state.finishedAt = 0;
     state.hasStarted = false;
     state.taskName = "";
@@ -837,7 +965,7 @@
   }
 
   function finishCountdown() {
-    state.elapsedBeforeStartMs = state.countdownDurationMs;
+    state.elapsedBeforeStartMs = state.countdownSessionStartElapsedMs + state.countdownDurationMs;
     state.isRunning = false;
     state.startedAt = 0;
     state.finishedAt = now();
@@ -850,13 +978,16 @@
 
   function performModeSwitch(mode) {
     if (state.mode === mode) return;
-    if (state.isRunning) stopTicking();
+    if (state.isRunning) {
+      state.elapsedBeforeStartMs = getElapsedMs();
+      stopTicking();
+    }
     state.isRunning = false;
     state.startedAt = 0;
     state.mode = mode;
-    state.elapsedBeforeStartMs = 0;
+    state.countdownSessionStartElapsedMs = state.elapsedBeforeStartMs;
     state.finishedAt = 0;
-    state.hasStarted = false;
+    state.hasStarted = state.elapsedBeforeStartMs > 0;
     saveState();
     render();
   }
@@ -887,7 +1018,9 @@
     modeSwitchConfirmPreviousFocus = elements.app.ownerDocument.activeElement;
     const modeName = mode === MODES.COUNTDOWN ? "カウントダウン" : "ストップウォッチ";
     elements.modeSwitchConfirmMessage.textContent =
-      `現在の計測時間を破棄して「${modeName}」へ切り替えてもよろしいですか？`;
+      state.isRunning
+        ? `現在の累計時間を維持し、動作中のタイマーを一時停止して「${modeName}」へ切り替えてもよろしいですか？`
+        : `現在の累計時間を維持したまま「${modeName}」へ切り替えてもよろしいですか？`;
     elements.modeSwitchConfirmOverlay.hidden = false;
     elements.confirmModeSwitchButton.focus();
   }
@@ -897,10 +1030,16 @@
   }
 
   function setCountdownDuration(seconds) {
+    if (state.isRunning) {
+      state.elapsedBeforeStartMs = getElapsedMs();
+      state.isRunning = false;
+      state.startedAt = 0;
+      stopTicking();
+    }
     state.countdownDurationMs = seconds * 1000;
-    state.elapsedBeforeStartMs = 0;
+    state.countdownSessionStartElapsedMs = state.elapsedBeforeStartMs;
     state.finishedAt = 0;
-    state.hasStarted = false;
+    state.hasStarted = state.elapsedBeforeStartMs > 0;
     syncInputsFromDuration();
     saveState();
     render();
@@ -1078,6 +1217,34 @@
     elements.editHistoryDialog.close();
     renderHistory();
     showToast("作業履歴を変更しました");
+  }
+
+  function resumeFromHistory() {
+    if (!editingRecord) return;
+    const record = editingRecord;
+    if (state.isRunning) {
+      state.elapsedBeforeStartMs = getElapsedMs();
+      state.isRunning = false;
+      state.startedAt = 0;
+      stopTicking();
+    }
+    snapshotActiveTimer();
+    const tab = createTimerTab(state.nextTimerNumber);
+    state.nextTimerNumber += 1;
+    tab.mode = Object.values(MODES).includes(record.mode) ? record.mode : getDefaultMode();
+    tab.taskName = record.taskName.slice(0, 80);
+    tab.elapsedBeforeStartMs = record.durationMs;
+    tab.countdownSessionStartElapsedMs = record.durationMs;
+    tab.hasStarted = true;
+    state.timerTabs.push(tab);
+    applyTimerTab(tab);
+    syncInputsFromDuration();
+    timerTabsSignature = "";
+    elements.editHistoryDialog.close();
+    elements.historyDialog.close();
+    saveState();
+    startTimer();
+    showToast("履歴の累計時間から計測を再開しました");
   }
 
   function deleteHistoryRecord(record) {
@@ -1299,10 +1466,14 @@
       pipWindow.document.head.append(styleLink);
       pipWindow.document.body.className = "is-popup";
       pipWindow.document.body.append(elements.app);
+      popupFitSignature = "";
+      scheduleFitPopupContent();
       pipWindow.document.addEventListener("keydown", handleKeyboard);
       suppressPopupSizeSaveUntil = now() + 1200;
       pipWindow.addEventListener("resize", () => {
         scheduleFitControlButtonText();
+        popupFitSignature = "";
+        scheduleFitPopupContent();
         schedulePopupSizeSave(pipWindow);
       });
       if (!hadSavedSize) {
@@ -1313,6 +1484,10 @@
       pipWindow.addEventListener("pagehide", () => {
         state.isMinimized = false;
         preMinimizePopupSize = null;
+        elements.app.style.zoom = "";
+        elements.app.style.width = "";
+        elements.app.style.maxWidth = "";
+        popupFitSignature = "";
         document.body.classList.toggle("is-popup", new URLSearchParams(location.search).has("popup"));
         document.body.append(elements.app); render();
       });
@@ -1371,6 +1546,18 @@
     });
     elements.addTimerTabButton.addEventListener("click", addTimerTab);
     elements.settingsButton.addEventListener("click", openSettingsDialog);
+    elements.defaultModeSelect.addEventListener("change", () => {
+      if (!Object.values(MODES).includes(elements.defaultModeSelect.value)) return;
+      localStorage.setItem(DEFAULT_MODE_KEY, elements.defaultModeSelect.value);
+      if (!state.hasStarted && !state.isRunning && state.elapsedBeforeStartMs === 0) {
+        state.mode = elements.defaultModeSelect.value;
+        state.countdownSessionStartElapsedMs = 0;
+        state.finishedAt = 0;
+        saveState();
+        render();
+      }
+      showToast("新しいタイマーの初期モードを変更しました");
+    });
     elements.resetPopupSizeButton.addEventListener("click", resetPopupSize);
     elements.resetMinimizedPopupSizeButton.addEventListener("click", resetMinimizedPopupSize);
     elements.cancelTimerNavigationButton.addEventListener("click", closeTimerNavigationConfirm);
@@ -1390,11 +1577,10 @@
     });
     elements.modeTabs.forEach((tab) => tab.addEventListener("click", () => switchMode(tab.dataset.mode)));
     [elements.hoursInput, elements.minutesInput, elements.secondsInput].forEach((input) => input.addEventListener("change", () => {
-      state.countdownDurationMs = getDurationFromInputs();
-      state.elapsedBeforeStartMs = 0; state.finishedAt = 0; state.hasStarted = false;
-      syncInputsFromDuration(); saveState(); render();
+      setCountdownDuration(getDurationFromInputs() / 1000);
     }));
     elements.presetButtons.forEach((button) => button.addEventListener("click", () => setCountdownDuration(Number.parseInt(button.dataset.seconds, 10))));
+    elements.additionalCountdownButton.addEventListener("click", startAdditionalCountdown);
     elements.taskButton.addEventListener("click", () => openTaskDialog(false));
     elements.taskDialogForm.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -1417,6 +1603,7 @@
     [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput]
       .forEach((input) => input.addEventListener("change", normalizeEditDurationInputs));
     elements.editHistoryForm.addEventListener("submit", updateHistoryRecord);
+    elements.resumeHistoryButton.addEventListener("click", resumeFromHistory);
     elements.editHistoryDialog.addEventListener("close", () => { editingRecord = null; });
     elements.editDeleteButton.addEventListener("click", () => {
       if (!editingRecord) return;
@@ -1433,13 +1620,19 @@
     elements.closeDialogButtons.forEach((button) => button.addEventListener("click", () => button.closest("dialog").close()));
     elements.startPauseButton.addEventListener("pointerdown", handleTimerPointerDown);
     elements.startPauseButton.addEventListener("click", handleTimerClick);
+    elements.compactStartPauseButton.addEventListener("pointerdown", handleTimerPointerDown);
+    elements.compactStartPauseButton.addEventListener("click", handleTimerClick);
     elements.resetButton.addEventListener("click", resetTimer);
     elements.nextTaskButton.addEventListener("click", moveToNextTask);
     elements.popupButton.addEventListener("click", openCompactWindow);
     elements.minimizeButton.addEventListener("click", toggleMinimized);
     document.addEventListener("keydown", handleKeyboard);
     window.addEventListener("resize", scheduleFitControlButtonText);
-    window.addEventListener("resize", () => schedulePopupSizeSave(window));
+    window.addEventListener("resize", () => {
+      popupFitSignature = "";
+      scheduleFitPopupContent();
+      schedulePopupSizeSave(window);
+    });
     window.addEventListener("beforeunload", (event) => {
       if (!hasStartedTimer()) return;
       saveState();
@@ -1450,6 +1643,7 @@
 
   function initialize() {
     loadState();
+    if (resetPreviousDayState) saveState();
     const isPopup = new URLSearchParams(location.search).has("popup");
     elements.body.classList.toggle("is-popup", isPopup);
     if (isPopup) suppressPopupSizeSaveUntil = now() + 1200;
@@ -1458,6 +1652,7 @@
     updateDateTime();
     window.setInterval(updateDateTime, 250);
     render();
+    if (resetPreviousDayState) showToast("前日までの計測途中データをリセットしました");
     if (isPopup) {
       window.requestAnimationFrame(() => applyPopupSize(window, getPreferredPopupSize(window)));
     }

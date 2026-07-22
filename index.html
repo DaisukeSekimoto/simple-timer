@@ -20,6 +20,7 @@
           <button id="settings-button" class="icon-button" type="button" aria-label="設定" title="設定">
             <span aria-hidden="true">⚙</span>
           </button>
+          <button id="compact-start-pause-button" class="primary-button compact-start-pause-button" type="button">開始</button>
           <button id="minimize-button" class="icon-button minimize-button" type="button" aria-label="最小化" title="最小化">
             <span aria-hidden="true">−</span>
           </button>
@@ -45,6 +46,8 @@
         </div>
 
         <div id="time-display" class="time-display" aria-live="off">00:25:00</div>
+        <p id="cumulative-time-display" class="cumulative-time-display">累計 00:00:00</p>
+        <button id="additional-countdown-button" class="additional-countdown-button" type="button" hidden>同じ時間でもう一度開始</button>
         <div id="finish-flash" class="finish-flash" aria-hidden="true"></div>
 
         <form id="timer-form" class="timer-form">
@@ -57,7 +60,6 @@
           </div>
 
           <fieldset id="countdown-settings" class="countdown-settings">
-            <legend>時間設定</legend>
             <div class="time-inputs">
               <label>
                 <span>時</span>
@@ -100,11 +102,11 @@
       </div>
       <div id="mode-switch-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="mode-switch-confirm-title">
         <section class="confirm-card">
-          <h2 id="mode-switch-confirm-title">計測中の時間を削除しますか？</h2>
+          <h2 id="mode-switch-confirm-title">モードを切り替えますか？</h2>
           <p id="mode-switch-confirm-message" class="confirm-message"></p>
           <div class="confirm-actions">
             <button id="cancel-mode-switch-button" class="secondary-button" type="button">キャンセル</button>
-            <button id="confirm-mode-switch-button" class="danger-button" type="button">削除して切り替える</button>
+            <button id="confirm-mode-switch-button" class="primary-button" type="button">累計を維持して切り替える</button>
           </div>
         </section>
       </div>
@@ -143,6 +145,16 @@
           <h2>設定</h2>
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
+        <section class="settings-section" aria-labelledby="default-mode-settings-title">
+          <h3 id="default-mode-settings-title">初期表示</h3>
+          <label class="dialog-field">
+            <span>新しいタイマーのモード</span>
+            <select id="default-mode-select">
+              <option value="countdown">カウントダウン</option>
+              <option value="stopwatch">ストップウォッチ</option>
+            </select>
+          </label>
+        </section>
         <section class="settings-section" aria-labelledby="popup-size-settings-title">
           <h3 id="popup-size-settings-title">ピクチャーインピクチャーのサイズ</h3>
           <p class="settings-description">各表示状態でウィンドウのサイズを変更すると、次回からそのサイズで開きます。</p>
@@ -194,7 +206,7 @@
         </div>
         <div id="history-list" class="history-list" aria-live="polite"></div>
         <div class="history-actions">
-          <button id="add-history-button" class="primary-button" type="button">作業履歴を追加</button>
+          <button id="add-history-button" class="primary-button" type="button">作業履歴を追加<br>（当日のみ）</button>
           <button id="export-history-button" class="secondary-button" type="button">全履歴をTXT出力</button>
         </div>
         <div id="confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-title">
@@ -238,6 +250,7 @@
           <input id="edit-task-input" type="text" autocomplete="off" maxlength="80" required>
         </label>
         <p id="edit-history-error" class="form-error" aria-live="polite"></p>
+        <button id="resume-history-button" class="secondary-button resume-history-button" type="button">この履歴から計測を再開</button>
         <div class="edit-history-actions">
           <button id="edit-delete-button" class="danger-button" type="button">削除</button>
           <button class="primary-button" type="submit">変更を保存</button>
@@ -248,7 +261,7 @@
     <dialog id="add-history-dialog" class="modal">
       <form id="add-history-form" class="modal-card">
         <div class="modal-header">
-          <h2>作業履歴を追加</h2>
+          <h2>作業履歴を追加（当日のみ）</h2>
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <label class="dialog-field">
