@@ -46,8 +46,7 @@
         </div>
 
         <div id="time-display" class="time-display" aria-live="off">00:25:00</div>
-        <p id="cumulative-time-display" class="cumulative-time-display">累計 00:00:00</p>
-        <button id="additional-countdown-button" class="additional-countdown-button" type="button" hidden>同じ時間でもう一度開始</button>
+        <p id="cumulative-time-display" class="cumulative-time-display">作業時間 00:00:00</p>
         <div id="finish-flash" class="finish-flash" aria-hidden="true"></div>
 
         <form id="timer-form" class="timer-form">
@@ -90,6 +89,28 @@
         </div>
       </section>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div id="previous-day-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="previous-day-confirm-title">
+        <section class="confirm-card">
+          <h2 id="previous-day-confirm-title">前日分の作業時間が残っています</h2>
+          <p id="previous-day-confirm-message" class="confirm-message"></p>
+          <p class="confirm-message">この計測をリセットするか、前日の作業履歴として追加してください。</p>
+          <div class="confirm-actions">
+            <button id="reset-previous-day-button" class="danger-button" type="button">リセット</button>
+            <button id="record-previous-day-button" class="primary-button" type="button">前日の履歴として追加</button>
+          </div>
+        </section>
+      </div>
+      <div id="reset-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
+        <section class="confirm-card">
+          <h2 id="reset-confirm-title">作業時間をリセットしますか？</h2>
+          <p id="reset-confirm-message" class="confirm-message"></p>
+          <p class="confirm-message">この作業時間はまだ履歴に追加されていません。リセットすると元に戻せません。</p>
+          <div class="confirm-actions">
+            <button id="cancel-reset-button" class="secondary-button" type="button">キャンセル</button>
+            <button id="confirm-reset-button" class="danger-button" type="button">履歴に追加せず<br>リセット</button>
+          </div>
+        </section>
+      </div>
       <div id="timer-tab-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="timer-tab-confirm-title">
         <section class="confirm-card">
           <h2 id="timer-tab-confirm-title">開始済みのタイマーを削除しますか？</h2>
@@ -106,7 +127,7 @@
           <p id="mode-switch-confirm-message" class="confirm-message"></p>
           <div class="confirm-actions">
             <button id="cancel-mode-switch-button" class="secondary-button" type="button">キャンセル</button>
-            <button id="confirm-mode-switch-button" class="primary-button" type="button">累計を維持して切り替える</button>
+            <button id="confirm-mode-switch-button" class="primary-button" type="button">作業時間を維持して切り替える</button>
           </div>
         </section>
       </div>
@@ -130,6 +151,10 @@
         <label class="dialog-field">
           <span>タスク名</span>
           <input id="task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
+        </label>
+        <label class="dialog-field">
+          <span>メモ（任意）</span>
+          <textarea id="task-memo-input" maxlength="300" rows="3" placeholder="作業内容や補足"></textarea>
         </label>
         <div>
           <h3>最近のタスク</h3>
@@ -182,6 +207,14 @@
             </table>
           </div>
         </section>
+        <section class="settings-section" aria-labelledby="aggregation-settings-title">
+          <h3 id="aggregation-settings-title">高度な計測</h3>
+          <label class="settings-check-field">
+            <input id="aggregation-enabled-input" type="checkbox">
+            <span>タスク名統一やメモ機能を使用する</span>
+          </label>
+          <p class="settings-description">同一タスク名で1日あたりの作業時間を集計します。詳細のメモを追加できます。</p>
+        </section>
       </section>
     </dialog>
 
@@ -204,7 +237,10 @@
             <button class="unit-button" type="button" data-unit="clock">hh:mm:ss表記</button>
           </div>
         </div>
+        <p id="history-date-context" class="history-date-context" hidden>過去の履歴（参照のみ）</p>
+        <section id="history-summary" class="history-summary" hidden></section>
         <div id="history-list" class="history-list" aria-live="polite"></div>
+        <p class="history-time-help">時間帯は「最初の計測開始時刻～履歴追加時刻」を表示しています。</p>
         <div class="history-actions">
           <button id="add-history-button" class="primary-button" type="button">作業履歴を追加<br>（当日のみ）</button>
           <button id="export-history-button" class="secondary-button" type="button">全履歴をTXT出力</button>
@@ -249,6 +285,10 @@
           <span>タスク名</span>
           <input id="edit-task-input" type="text" autocomplete="off" maxlength="80" required>
         </label>
+        <label class="dialog-field">
+          <span>メモ（任意）</span>
+          <textarea id="edit-memo-input" maxlength="300" rows="3"></textarea>
+        </label>
         <p id="edit-history-error" class="form-error" aria-live="polite"></p>
         <button id="resume-history-button" class="secondary-button resume-history-button" type="button">この履歴から計測を再開</button>
         <div class="edit-history-actions">
@@ -256,6 +296,18 @@
           <button class="primary-button" type="submit">変更を保存</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="resume-history-confirm-dialog" class="modal">
+      <section class="modal-card confirm-card">
+        <h2>この履歴から計測を再開しますか？</h2>
+        <p id="resume-history-confirm-message" class="confirm-message"></p>
+        <p class="confirm-message">元の履歴は削除されます。</p>
+        <div class="confirm-actions">
+          <button id="cancel-resume-history-button" class="secondary-button" type="button">キャンセル</button>
+          <button id="confirm-resume-history-button" class="primary-button" type="button">履歴から削除して計測再開</button>
+        </div>
+      </section>
     </dialog>
 
     <dialog id="add-history-dialog" class="modal">
@@ -288,6 +340,10 @@
         <label class="dialog-field">
           <span>タスク名</span>
           <input id="manual-task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
+        </label>
+        <label class="dialog-field">
+          <span>メモ（任意）</span>
+          <textarea id="manual-memo-input" maxlength="300" rows="3" placeholder="作業内容や補足"></textarea>
         </label>
         <div>
           <h3>最近のタスク</h3>
