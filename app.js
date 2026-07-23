@@ -1777,6 +1777,32 @@
 
   function handleKeyboard(event) {
     if (pendingNewDateKey) return;
+    const key = event.key.toLowerCase();
+    if (event.ctrlKey && !event.altKey && !event.shiftKey && key === "enter") {
+      const form = event.target.closest?.("#task-dialog-form, #edit-history-form");
+      if (form) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+      return;
+    }
+    const hasOpenDialog = Boolean(elements.app.ownerDocument.querySelector("dialog[open]"));
+    const isAddTimerShortcut = !event.metaKey && key === "t" && event.shiftKey &&
+      ((event.ctrlKey && !event.altKey) || (event.altKey && !event.ctrlKey));
+    if (isAddTimerShortcut) {
+      if (!hasOpenDialog) {
+        event.preventDefault();
+        addTimerTab();
+      }
+      return;
+    }
+    if (!event.metaKey && event.ctrlKey && event.shiftKey && !event.altKey && key === "h") {
+      if (!hasOpenDialog) {
+        event.preventDefault();
+        openHistoryDialog();
+      }
+      return;
+    }
     if (isResetConfirmOpen()) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -1817,7 +1843,7 @@
       event.preventDefault();
       isFinishedCountdown() ? prepareAdditionalCountdown() : state.isRunning ? pauseTimer() : startTimer();
     }
-    else if (event.key.toLowerCase() === "r") requestResetTimer();
+    else if (key === "r") requestResetTimer();
   }
 
   function bindEvents() {

@@ -590,6 +590,47 @@ h1 {
   white-space: nowrap;
 }
 
+.shortcut-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.shortcut-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.shortcut-table th,
+.shortcut-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.shortcut-table tr:last-child > * {
+  border-bottom: 0;
+}
+
+.shortcut-table th {
+  white-space: nowrap;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 5px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--text);
+  background: #fff;
+  font: 0.72rem ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-align: center;
+}
+
 .recent-task-list {
   display: flex;
   flex-wrap: wrap;
