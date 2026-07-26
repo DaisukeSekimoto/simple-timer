@@ -889,6 +889,13 @@
     performSelectTimerTab(timerId);
   }
 
+  function selectNextTimerTab() {
+    if (state.timerTabs.length <= 1) return;
+    const currentIndex = state.timerTabs.findIndex((tab) => tab.id === state.activeTimerId);
+    const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % state.timerTabs.length;
+    selectTimerTab(state.timerTabs[nextIndex].id);
+  }
+
   function addTimerTab() {
     if (state.isRunning) {
       requestTimerNavigation({ type: "add" });
@@ -1787,17 +1794,18 @@
       return;
     }
     const hasOpenDialog = Boolean(elements.app.ownerDocument.querySelector("dialog[open]"));
-    const isAddTimerShortcut = !event.metaKey && key === "t" && event.shiftKey &&
-      ((event.ctrlKey && !event.altKey) || (event.altKey && !event.ctrlKey));
+    const hasOpenConfirmation = isResetConfirmOpen() || isTimerNavigationConfirmOpen() ||
+      isModeSwitchConfirmOpen() || isTimerTabConfirmOpen() || isDeleteConfirmOpen();
+    const isAddTimerShortcut = !event.metaKey && !event.ctrlKey && event.altKey && event.shiftKey && event.code === "KeyT";
     if (isAddTimerShortcut) {
-      if (!hasOpenDialog) {
+      if (!hasOpenDialog && !hasOpenConfirmation) {
         event.preventDefault();
         addTimerTab();
       }
       return;
     }
     if (!event.metaKey && event.ctrlKey && event.shiftKey && !event.altKey && key === "h") {
-      if (!hasOpenDialog) {
+      if (!hasOpenDialog && !hasOpenConfirmation) {
         event.preventDefault();
         openHistoryDialog();
       }
@@ -1836,6 +1844,18 @@
         event.preventDefault();
         closeDeleteConfirm();
       }
+      return;
+    }
+    if (!hasOpenDialog && !event.ctrlKey && !event.metaKey && event.altKey && event.shiftKey && key === "tab") {
+      event.preventDefault();
+      selectNextTimerTab();
+      return;
+    }
+    const isDeleteTabShortcut = !hasOpenDialog && !event.ctrlKey && !event.metaKey && event.altKey && event.shiftKey &&
+      (key === "delete" || key === "backspace");
+    if (isDeleteTabShortcut) {
+      event.preventDefault();
+      closeTimerTab(state.activeTimerId);
       return;
     }
     if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.app.ownerDocument.querySelector("dialog[open]")) return;
