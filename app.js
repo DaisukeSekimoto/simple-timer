@@ -889,11 +889,17 @@
     performSelectTimerTab(timerId);
   }
 
-  function selectNextTimerTab() {
+  function selectAdjacentTimerTab(direction = 1) {
     if (state.timerTabs.length <= 1) return;
     const currentIndex = state.timerTabs.findIndex((tab) => tab.id === state.activeTimerId);
-    const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % state.timerTabs.length;
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + direction + state.timerTabs.length) % state.timerTabs.length;
     selectTimerTab(state.timerTabs[nextIndex].id);
+  }
+
+  function selectNextTimerTab() {
+    selectAdjacentTimerTab(1);
   }
 
   function addTimerTab() {
@@ -1782,20 +1788,35 @@
 
   async function openCompactWindow() { if (!(await openDocumentPictureInPicture())) openPopupWindow(); }
 
+  async function cyclePopupDisplay() {
+    if (!isPopupContext()) {
+      await openCompactWindow();
+      return;
+    }
+    if (!state.isMinimized) {
+      toggleMinimized();
+      return;
+    }
+    elements.app.ownerDocument.defaultView.close();
+  }
+
   function handleKeyboard(event) {
     if (pendingNewDateKey) return;
     const key = event.key.toLowerCase();
+    const hasOpenDialog = Boolean(elements.app.ownerDocument.querySelector("dialog[open]"));
+    const hasOpenConfirmation = isResetConfirmOpen() || isTimerNavigationConfirmOpen() ||
+      isModeSwitchConfirmOpen() || isTimerTabConfirmOpen() || isDeleteConfirmOpen();
     if (event.ctrlKey && !event.altKey && !event.shiftKey && key === "enter") {
       const form = event.target.closest?.("#task-dialog-form, #edit-history-form");
       if (form) {
         event.preventDefault();
         form.requestSubmit();
+      } else if (!hasOpenDialog && !hasOpenConfirmation) {
+        event.preventDefault();
+        openTaskDialog(false);
       }
       return;
     }
-    const hasOpenDialog = Boolean(elements.app.ownerDocument.querySelector("dialog[open]"));
-    const hasOpenConfirmation = isResetConfirmOpen() || isTimerNavigationConfirmOpen() ||
-      isModeSwitchConfirmOpen() || isTimerTabConfirmOpen() || isDeleteConfirmOpen();
     const isAddTimerShortcut = !event.metaKey && !event.ctrlKey && event.altKey && event.shiftKey && event.code === "KeyT";
     if (isAddTimerShortcut) {
       if (!hasOpenDialog && !hasOpenConfirmation) {
@@ -1851,11 +1872,25 @@
       selectNextTimerTab();
       return;
     }
+    const isMoveTabShortcut = !hasOpenDialog && !event.ctrlKey && !event.metaKey && event.altKey && event.shiftKey &&
+      (event.code === "ArrowLeft" || event.code === "ArrowRight");
+    if (isMoveTabShortcut) {
+      event.preventDefault();
+      selectAdjacentTimerTab(event.code === "ArrowLeft" ? -1 : 1);
+      return;
+    }
     const isDeleteTabShortcut = !hasOpenDialog && !event.ctrlKey && !event.metaKey && event.altKey && event.shiftKey &&
-      (key === "delete" || key === "backspace");
+      (key === "delete" || key === "backspace" || event.code === "KeyD");
     if (isDeleteTabShortcut) {
       event.preventDefault();
       closeTimerTab(state.activeTimerId);
+      return;
+    }
+    const isPopupShortcut = !hasOpenDialog && !event.ctrlKey && !event.metaKey && event.altKey && event.shiftKey &&
+      event.code === "KeyS";
+    if (isPopupShortcut) {
+      event.preventDefault();
+      cyclePopupDisplay();
       return;
     }
     if (["input", "textarea", "button"].includes(event.target.tagName.toLowerCase()) || elements.app.ownerDocument.querySelector("dialog[open]")) return;
