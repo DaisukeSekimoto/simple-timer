@@ -49,8 +49,10 @@
         </div>
 
         <div id="time-display" class="time-display" aria-live="off">00:25:00</div>
-        <p id="cumulative-time-display" class="cumulative-time-display">作業時間 00:00:00</p>
-        <p id="pomodoro-phase-display" class="pomodoro-phase-display" hidden>作業</p>
+        <div id="time-meta-row" class="time-meta-row">
+          <p id="cumulative-time-display" class="cumulative-time-display">作業時間 00:00:00</p>
+          <p id="pomodoro-phase-display" class="pomodoro-phase-display" hidden>作業</p>
+        </div>
         <div id="finish-flash" class="finish-flash" aria-hidden="true"></div>
 
         <form id="timer-form" class="timer-form">
@@ -63,10 +65,6 @@
           </div>
 
           <fieldset id="countdown-settings" class="countdown-settings">
-            <label class="settings-check-field pomodoro-toggle">
-              <input id="pomodoro-enabled-input" type="checkbox">
-              <span>ポモドーロ（作業後に休憩する）</span>
-            </label>
             <div class="time-inputs">
               <label>
                 <span>時</span>
@@ -87,12 +85,21 @@
               <button type="button" class="preset-button" data-seconds="1500">25分</button>
               <button type="button" class="preset-button" data-seconds="3000">50分</button>
             </div>
-            <div id="pomodoro-break-settings" class="pomodoro-break-settings" hidden>
-              <label>
-                <span>休憩（分）</span>
-                <input id="pomodoro-break-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="5">
+            <div class="pomodoro-footer">
+              <div id="pomodoro-break-settings" class="pomodoro-break-settings" aria-hidden="true">
+                <label>
+                  <span>休憩（作業時間外）</span>
+                  <input id="pomodoro-break-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="5" disabled>
+                  <span>分</span>
+                </label>
+              </div>
+              <label class="pomodoro-toggle">
+                <span class="pomodoro-toggle-label">ポモドーロ</span>
+                <input id="pomodoro-enabled-input" type="checkbox">
+                <span class="pomodoro-toggle-track" aria-hidden="true">
+                  <span class="pomodoro-toggle-thumb"></span>
+                </span>
               </label>
-              <p class="settings-description">休憩時間は作業時間や履歴に加算されません。</p>
             </div>
           </fieldset>
         </form>
@@ -122,7 +129,7 @@
         <section class="confirm-card">
           <h2 id="reset-confirm-title">作業時間をリセットしますか？</h2>
           <p id="reset-confirm-message" class="confirm-message"></p>
-          <p class="confirm-message">この作業時間はまだ履歴に追加されていません。リセットすると元に戻せません。</p>
+          <p class="confirm-message">この作業時間はまだ履歴に追加されていません。</p>
           <div class="confirm-actions">
             <button id="cancel-reset-button" class="secondary-button" type="button">キャンセル</button>
             <button id="confirm-reset-button" class="danger-button" type="button">履歴に追加せず<br>リセット</button>
@@ -250,7 +257,7 @@
                   <td>タイマーを追加</td>
                 </tr>
                 <tr>
-                  <th scope="row"><kbd>Ctrl</kbd>＋<kbd>Shift</kbd>＋<kbd>H</kbd></th>
+                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>H</kbd></th>
                   <td>作業履歴を表示</td>
                 </tr>
                 <tr>
@@ -327,7 +334,7 @@
             <span>この日のメモ</span>
             <textarea id="daily-memo-input" maxlength="1000" rows="3" placeholder="1日単位のメモを入力"></textarea>
           </label>
-          <button id="save-daily-memo-button" class="secondary-button" type="button">日別メモを保存</button>
+          <p id="daily-memo-status" class="daily-memo-status" aria-live="polite"></p>
         </section>
         <section id="history-summary" class="history-summary" hidden></section>
         <div id="history-list" class="history-list" aria-live="polite"></div>
