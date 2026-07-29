@@ -3,8 +3,11 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#176b57">
     <title>Simple Timer</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -47,6 +50,7 @@
 
         <div id="time-display" class="time-display" aria-live="off">00:25:00</div>
         <p id="cumulative-time-display" class="cumulative-time-display">作業時間 00:00:00</p>
+        <p id="pomodoro-phase-display" class="pomodoro-phase-display" hidden>作業</p>
         <div id="finish-flash" class="finish-flash" aria-hidden="true"></div>
 
         <form id="timer-form" class="timer-form">
@@ -59,6 +63,10 @@
           </div>
 
           <fieldset id="countdown-settings" class="countdown-settings">
+            <label class="settings-check-field pomodoro-toggle">
+              <input id="pomodoro-enabled-input" type="checkbox">
+              <span>ポモドーロ（作業後に休憩する）</span>
+            </label>
             <div class="time-inputs">
               <label>
                 <span>時</span>
@@ -79,6 +87,13 @@
               <button type="button" class="preset-button" data-seconds="1500">25分</button>
               <button type="button" class="preset-button" data-seconds="3000">50分</button>
             </div>
+            <div id="pomodoro-break-settings" class="pomodoro-break-settings" hidden>
+              <label>
+                <span>休憩（分）</span>
+                <input id="pomodoro-break-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="5">
+              </label>
+              <p class="settings-description">休憩時間は作業時間や履歴に加算されません。</p>
+            </div>
           </fieldset>
         </form>
 
@@ -88,7 +103,10 @@
           <button id="next-task-button" class="secondary-button" type="button">次の作業に移る<br>（履歴へ追加）</button>
         </div>
       </section>
-      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div id="toast" class="toast" role="status" aria-live="polite">
+        <span id="toast-message"></span>
+        <button id="toast-undo-button" type="button" hidden>元に戻す</button>
+      </div>
       <div id="previous-day-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="previous-day-confirm-title">
         <section class="confirm-card">
           <h2 id="previous-day-confirm-title">前日分の作業時間が残っています</h2>
@@ -171,16 +189,21 @@
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <section class="settings-section" aria-labelledby="default-mode-settings-title">
-          <h3 id="default-mode-settings-title">初期表示</h3>
+          <h3 id="default-mode-settings-title">初期表示のモード</h3>
           <label class="dialog-field">
-            <span>新しいタイマーのモード</span>
             <select id="default-mode-select">
               <option value="countdown">カウントダウン</option>
               <option value="stopwatch">ストップウォッチ</option>
             </select>
           </label>
-        </section>
-        <section class="settings-section" aria-labelledby="popup-size-settings-title">
+          <h3 id="theme-settings-title">表示テーマ</h3>
+          <label class="dialog-field">
+            <select id="theme-select">
+              <option value="system">端末の設定に合わせる</option>
+              <option value="light">ライト</option>
+              <option value="dark">ダーク</option>
+            </select>
+          </label>
           <h3 id="popup-size-settings-title">ピクチャーインピクチャーのサイズ</h3>
           <p class="settings-description">各表示状態でウィンドウのサイズを変更すると、次回からそのサイズで開きます。</p>
           <div class="settings-table-wrap">
@@ -206,8 +229,6 @@
               </tbody>
             </table>
           </div>
-        </section>
-        <section class="settings-section" aria-labelledby="aggregation-settings-title">
           <h3 id="aggregation-settings-title">高度な計測</h3>
           <label class="settings-check-field">
             <input id="aggregation-enabled-input" type="checkbox">
@@ -267,6 +288,16 @@
               </tbody>
             </table>
           </div>
+        </section>
+        <section class="settings-section" aria-labelledby="backup-settings-title">
+          <h3 id="backup-settings-title">データのバックアップ</h3>
+          <p class="settings-description">タイマー、作業履歴、日別メモ、各種設定をJSONファイルに保存・復元します。ブラウザのデータを削除する前にエクスポートしてください。</p>
+          <div class="settings-backup-actions">
+            <button id="backup-export-button" class="secondary-button" type="button">バックアップを<br>エクスポート</button>
+            <button id="backup-import-button" class="secondary-button" type="button">バックアップを<br>インポート</button>
+          </div>
+          <input id="backup-file-input" class="visually-hidden" type="file" accept="application/json,.json">
+          <p id="backup-status" class="settings-backup-status" aria-live="polite"></p>
         </section>
       </section>
     </dialog>

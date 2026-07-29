@@ -6,8 +6,22 @@
   const DEFAULT_MODE_KEY = "simple-timer-default-mode";
   const AGGREGATION_ENABLED_KEY = "simple-timer-aggregation-enabled";
   const DAILY_MEMOS_KEY = "simple-timer-daily-memos";
+  const THEME_KEY = "simple-timer-theme";
+  const BACKUP_FORMAT = "simple-timer-backup";
+  const BACKUP_VERSION = 1;
+  const BACKUP_STORAGE_KEYS = [
+    STORAGE_KEY,
+    RECORDS_KEY,
+    POPUP_SIZE_KEY,
+    MINIMIZED_POPUP_SIZE_KEY,
+    DEFAULT_MODE_KEY,
+    AGGREGATION_ENABLED_KEY,
+    DAILY_MEMOS_KEY,
+    THEME_KEY,
+  ];
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
+  const DEFAULT_POMODORO_BREAK_MS = 5 * 60 * 1000;
   const TICK_INTERVAL_MS = 250;
   const POPUP_SIZE_LIMITS = { minWidth: 320, maxWidth: 720, minHeight: 120, maxHeight: 900 };
   const OPTIMAL_POPUP_MIN_HEIGHT = 360;
@@ -19,6 +33,8 @@
     statusText: document.querySelector("#status-text"),
     recordDate: document.querySelector("#record-date"),
     toast: document.querySelector("#toast"),
+    toastMessage: document.querySelector("#toast-message"),
+    toastUndoButton: document.querySelector("#toast-undo-button"),
     previousDayConfirmOverlay: document.querySelector("#previous-day-confirm-overlay"),
     previousDayConfirmMessage: document.querySelector("#previous-day-confirm-message"),
     resetPreviousDayButton: document.querySelector("#reset-previous-day-button"),
@@ -36,6 +52,11 @@
     resetMinimizedPopupSizeButton: document.querySelector("#reset-minimized-popup-size-button"),
     defaultModeSelect: document.querySelector("#default-mode-select"),
     aggregationEnabledInput: document.querySelector("#aggregation-enabled-input"),
+    themeSelect: document.querySelector("#theme-select"),
+    backupExportButton: document.querySelector("#backup-export-button"),
+    backupImportButton: document.querySelector("#backup-import-button"),
+    backupFileInput: document.querySelector("#backup-file-input"),
+    backupStatus: document.querySelector("#backup-status"),
     timerTabList: document.querySelector("#timer-tab-list"),
     addTimerTabButton: document.querySelector("#add-timer-tab-button"),
     timerTabConfirmOverlay: document.querySelector("#timer-tab-confirm-overlay"),
@@ -52,6 +73,10 @@
     confirmTimerNavigationButton: document.querySelector("#confirm-timer-navigation-button"),
     modeTabs: Array.from(document.querySelectorAll(".mode-tab")),
     countdownSettings: document.querySelector("#countdown-settings"),
+    pomodoroEnabledInput: document.querySelector("#pomodoro-enabled-input"),
+    pomodoroBreakSettings: document.querySelector("#pomodoro-break-settings"),
+    pomodoroBreakInput: document.querySelector("#pomodoro-break-input"),
+    pomodoroPhaseDisplay: document.querySelector("#pomodoro-phase-display"),
     hoursInput: document.querySelector("#hours-input"),
     minutesInput: document.querySelector("#minutes-input"),
     secondsInput: document.querySelector("#seconds-input"),
@@ -126,6 +151,10 @@
     elapsedBeforeStartMs: 0,
     countdownSessionStartElapsedMs: 0,
     countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
+    pomodoroEnabled: false,
+    pomodoroPhase: "work",
+    pomodoroPhaseElapsedBeforeStartMs: 0,
+    pomodoroBreakDurationMs: DEFAULT_POMODORO_BREAK_MS,
     taskName: "",
     taskMemo: "",
     firstStartedAt: 0,
@@ -141,6 +170,7 @@
 
   let tickId = 0;
   let toastId = 0;
+  let toastUndoAction = null;
   let timerPointerHandledAt = 0;
   let audioContext = null;
   let pendingRecordAfterTaskInput = false;
@@ -225,12 +255,7 @@
   }
 
   function openPreviousDayConfirm(newDateKey) {
-    if (state.isRunning) {
-      state.elapsedBeforeStartMs = getElapsedMs();
-      state.isRunning = false;
-      state.startedAt = 0;
-      stopTicking();
-    }
+    freezeRunningTimer();
     snapshotActiveTimer();
     saveState();
     pendingNewDateKey = newDateKey;
@@ -298,6 +323,10 @@
       elapsedBeforeStartMs: 0,
       countdownSessionStartElapsedMs: 0,
       countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
+      pomodoroEnabled: false,
+      pomodoroPhase: "work",
+      pomodoroPhaseElapsedBeforeStartMs: 0,
+      pomodoroBreakDurationMs: DEFAULT_POMODORO_BREAK_MS,
       taskName: "",
       taskMemo: "",
       firstStartedAt: 0,
@@ -308,12 +337,13 @@
 
   function getDefaultMode() {
     const savedMode = localStorage.getItem(DEFAULT_MODE_KEY);
+    if (savedMode === "pomodoro") return MODES.COUNTDOWN;
     return Object.values(MODES).includes(savedMode) ? savedMode : MODES.COUNTDOWN;
   }
 
   function isValidTimerTab(tab) {
     return tab && typeof tab.id === "string" && Number.isFinite(tab.number) &&
-      Object.values(MODES).includes(tab.mode) &&
+      (Object.values(MODES).includes(tab.mode) || tab.mode === "pomodoro") &&
       Number.isFinite(tab.elapsedBeforeStartMs) && tab.elapsedBeforeStartMs >= 0 &&
       Number.isFinite(tab.countdownDurationMs) && tab.countdownDurationMs > 0 &&
       typeof tab.taskName === "string";
@@ -328,6 +358,10 @@
     tab.elapsedBeforeStartMs = getElapsedMs();
     tab.countdownSessionStartElapsedMs = state.countdownSessionStartElapsedMs;
     tab.countdownDurationMs = state.countdownDurationMs;
+    tab.pomodoroEnabled = state.pomodoroEnabled;
+    tab.pomodoroPhase = state.pomodoroPhase;
+    tab.pomodoroPhaseElapsedBeforeStartMs = getPomodoroPhaseElapsedMs();
+    tab.pomodoroBreakDurationMs = state.pomodoroBreakDurationMs;
     tab.taskName = state.taskName;
     tab.taskMemo = state.taskMemo;
     tab.firstStartedAt = state.firstStartedAt;
@@ -337,7 +371,7 @@
 
   function applyTimerTab(tab) {
     state.activeTimerId = tab.id;
-    state.mode = tab.mode;
+    state.mode = tab.mode === "pomodoro" ? MODES.COUNTDOWN : tab.mode;
     state.isRunning = false;
     state.startedAt = 0;
     state.elapsedBeforeStartMs = tab.elapsedBeforeStartMs;
@@ -345,6 +379,17 @@
       ? Math.min(tab.countdownSessionStartElapsedMs, tab.elapsedBeforeStartMs)
       : 0;
     state.countdownDurationMs = tab.countdownDurationMs;
+    state.pomodoroEnabled = tab.pomodoroEnabled === true || tab.mode === "pomodoro";
+    state.pomodoroPhase = ["work", "break"].includes(tab.pomodoroPhase) ? tab.pomodoroPhase : "work";
+    state.pomodoroPhaseElapsedBeforeStartMs = Number.isFinite(tab.pomodoroPhaseElapsedBeforeStartMs)
+      ? Math.max(0, tab.pomodoroPhaseElapsedBeforeStartMs)
+      : 0;
+    if (tab.mode === "pomodoro" && Number.isFinite(tab.pomodoroWorkDurationMs) && tab.pomodoroWorkDurationMs > 0) {
+      state.countdownDurationMs = tab.pomodoroWorkDurationMs;
+    }
+    state.pomodoroBreakDurationMs = Number.isFinite(tab.pomodoroBreakDurationMs) && tab.pomodoroBreakDurationMs > 0
+      ? tab.pomodoroBreakDurationMs
+      : DEFAULT_POMODORO_BREAK_MS;
     state.taskName = tab.taskName;
     state.taskMemo = typeof tab.taskMemo === "string" ? tab.taskMemo : "";
     state.firstStartedAt = Number.isFinite(tab.firstStartedAt) ? tab.firstStartedAt : 0;
@@ -361,6 +406,11 @@
       if (savedTabs.length) {
         state.timerTabs = savedTabs.map((tab) => ({
           ...tab,
+          mode: tab.mode === "pomodoro" ? MODES.COUNTDOWN : tab.mode,
+          pomodoroEnabled: tab.pomodoroEnabled === true || tab.mode === "pomodoro",
+          countdownDurationMs: tab.mode === "pomodoro" && Number.isFinite(tab.pomodoroWorkDurationMs)
+            ? tab.pomodoroWorkDurationMs
+            : tab.countdownDurationMs,
           taskName: tab.taskName.slice(0, 80),
           isRunning: false,
           startedAt: 0,
@@ -449,9 +499,20 @@
 
   function now() { return Date.now(); }
 
+  function getRunningDeltaMs() {
+    return state.isRunning ? Math.max(0, now() - state.startedAt) : 0;
+  }
+
+  function isPomodoroActive() {
+    return state.mode === MODES.COUNTDOWN && state.pomodoroEnabled;
+  }
+
   function getElapsedMs() {
+    if (isPomodoroActive() && state.pomodoroPhase === "break") {
+      return state.elapsedBeforeStartMs;
+    }
     return state.isRunning
-      ? state.elapsedBeforeStartMs + now() - state.startedAt
+      ? state.elapsedBeforeStartMs + getRunningDeltaMs()
       : state.elapsedBeforeStartMs;
   }
 
@@ -463,10 +524,21 @@
     return Math.max(0, getElapsedMs() - state.countdownSessionStartElapsedMs);
   }
 
+  function getPomodoroPhaseElapsedMs() {
+    return state.pomodoroPhaseElapsedBeforeStartMs +
+      (isPomodoroActive() ? getRunningDeltaMs() : 0);
+  }
+
+  function getPomodoroPhaseDurationMs() {
+    return state.pomodoroPhase === "break" ? state.pomodoroBreakDurationMs : state.countdownDurationMs;
+  }
+
   function getDisplayMs() {
-    return state.mode === MODES.STOPWATCH
-      ? getElapsedMs()
-      : Math.max(0, state.countdownDurationMs - getCountdownSessionElapsedMs());
+    if (state.mode === MODES.STOPWATCH) return getElapsedMs();
+    if (isPomodoroActive()) {
+      return Math.max(0, getPomodoroPhaseDurationMs() - getPomodoroPhaseElapsedMs());
+    }
+    return Math.max(0, state.countdownDurationMs - getCountdownSessionElapsedMs());
   }
 
   function normalizeSeconds(value, fallback) {
@@ -486,6 +558,8 @@
     elements.hoursInput.value = String(Math.floor(totalSeconds / 3600));
     elements.minutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
     elements.secondsInput.value = String(totalSeconds % 60);
+    elements.pomodoroEnabledInput.checked = state.pomodoroEnabled;
+    elements.pomodoroBreakInput.value = String(Math.round(state.pomodoroBreakDurationMs / 60000));
   }
 
   function formatTime(milliseconds, rounding = "floor") {
@@ -746,8 +820,140 @@
   function openSettingsDialog() {
     elements.defaultModeSelect.value = getDefaultMode();
     elements.aggregationEnabledInput.checked = isAggregationEnabled();
+    elements.themeSelect.value = getTheme();
+    elements.backupStatus.textContent = "";
+    elements.backupStatus.classList.remove("is-error");
     updatePopupSizeSettings();
     elements.settingsDialog.showModal();
+  }
+
+  function setBackupStatus(message, isError = false) {
+    elements.backupStatus.textContent = message;
+    elements.backupStatus.classList.toggle("is-error", isError);
+  }
+
+  function getTheme() {
+    const theme = localStorage.getItem(THEME_KEY);
+    return ["light", "dark"].includes(theme) ? theme : "system";
+  }
+
+  function applyTheme(theme = getTheme()) {
+    document.documentElement.dataset.theme = theme;
+  }
+
+  function getBackupSummary(storage) {
+    const parse = (key, fallback) => {
+      try { return JSON.parse(storage[key] || JSON.stringify(fallback)); } catch { return fallback; }
+    };
+    const records = parse(RECORDS_KEY, []);
+    const timerState = parse(STORAGE_KEY, {});
+    const memos = parse(DAILY_MEMOS_KEY, {});
+    const dates = Array.isArray(records)
+      ? records.map((record) => record && record.date).filter((date) => typeof date === "string").sort()
+      : [];
+    return [
+      `作業履歴：${Array.isArray(records) ? records.length : 0}件`,
+      `対象期間：${dates.length ? `${dates[0]} ～ ${dates[dates.length - 1]}` : "履歴なし"}`,
+      `タイマータブ：${Array.isArray(timerState.timerTabs) ? timerState.timerTabs.length : 0}件`,
+      `日別メモ：${memos && typeof memos === "object" && !Array.isArray(memos) ? Object.keys(memos).length : 0}件`,
+    ].join("\n");
+  }
+
+  function exportBackup() {
+    saveState();
+    saveRecords();
+    saveDailyMemos();
+    const backup = {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      storage: Object.fromEntries(BACKUP_STORAGE_KEYS.map((key) => [key, localStorage.getItem(key)])),
+    };
+    if (!window.confirm(`次の内容をバックアップします。\n\n${getBackupSummary(backup.storage)}\n\nエクスポートしますか？`)) {
+      setBackupStatus("エクスポートをキャンセルしました。");
+      return;
+    }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `simple-timer-backup-${localDateKey()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setBackupStatus("バックアップファイルを保存しました。");
+  }
+
+  function validateBackup(backup) {
+    if (!backup || backup.format !== BACKUP_FORMAT || backup.version !== BACKUP_VERSION) {
+      throw new Error("Simple Timerのバックアップファイルではないか、対応していない形式です。");
+    }
+    if (!backup.storage || typeof backup.storage !== "object" || Array.isArray(backup.storage)) {
+      throw new Error("バックアップの保存データが見つかりません。");
+    }
+    BACKUP_STORAGE_KEYS.forEach((key) => {
+      if (!(key in backup.storage)) backup.storage[key] = null;
+      const value = backup.storage[key];
+      if (value !== null && typeof value !== "string") {
+        throw new Error("バックアップ内のデータ形式が正しくありません。");
+      }
+    });
+    [
+      [STORAGE_KEY, (value) => value && typeof value === "object" && !Array.isArray(value)],
+      [RECORDS_KEY, Array.isArray],
+      [POPUP_SIZE_KEY, (value) => value && Number.isFinite(value.width) && Number.isFinite(value.height)],
+      [MINIMIZED_POPUP_SIZE_KEY, (value) => value && Number.isFinite(value.width) && Number.isFinite(value.height)],
+      [DAILY_MEMOS_KEY, (value) => value && typeof value === "object" && !Array.isArray(value)],
+    ].forEach(([key, isValid]) => {
+      const rawValue = backup.storage[key];
+      if (rawValue === null) return;
+      let parsed;
+      try {
+        parsed = JSON.parse(rawValue);
+      } catch {
+        throw new Error("バックアップ内のJSONデータが破損しています。");
+      }
+      if (!isValid(parsed)) throw new Error("バックアップ内のデータ形式が正しくありません。");
+    });
+    if (backup.storage[DEFAULT_MODE_KEY] !== null &&
+        !Object.values(MODES).includes(backup.storage[DEFAULT_MODE_KEY])) {
+      throw new Error("バックアップ内の初期表示設定が正しくありません。");
+    }
+    if (backup.storage[AGGREGATION_ENABLED_KEY] !== null &&
+        !["true", "false"].includes(backup.storage[AGGREGATION_ENABLED_KEY])) {
+      throw new Error("バックアップ内の高度な計測設定が正しくありません。");
+    }
+    if (backup.storage[THEME_KEY] !== null &&
+        !["system", "light", "dark"].includes(backup.storage[THEME_KEY])) {
+      throw new Error("バックアップ内のテーマ設定が正しくありません。");
+    }
+  }
+
+  async function importBackup(event) {
+    const [file] = event.target.files;
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const backup = JSON.parse(await file.text());
+      validateBackup(backup);
+      const shouldImport = window.confirm(
+        `バックアップの内容\n\n${getBackupSummary(backup.storage)}\n\n` +
+        "現在のタイマー、作業履歴、メモ、設定をこの内容で置き換えます。インポートしてよろしいですか？",
+      );
+      if (!shouldImport) {
+        setBackupStatus("インポートをキャンセルしました。");
+        return;
+      }
+      BACKUP_STORAGE_KEYS.forEach((key) => {
+        const value = backup.storage[key];
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      });
+      location.reload();
+    } catch (error) {
+      setBackupStatus(error instanceof Error ? error.message : "バックアップを読み込めませんでした。", true);
+    }
   }
 
   function schedulePopupSizeSave(view) {
@@ -848,12 +1054,7 @@
     if (timerId === state.activeTimerId) return;
     const nextTab = state.timerTabs.find((tab) => tab.id === timerId);
     if (!nextTab) return;
-    if (state.isRunning) {
-      state.elapsedBeforeStartMs = getElapsedMs();
-      state.isRunning = false;
-      state.startedAt = 0;
-      stopTicking();
-    }
+    freezeRunningTimer();
     snapshotActiveTimer();
     applyTimerTab(nextTab);
     syncInputsFromDuration();
@@ -863,12 +1064,7 @@
   }
 
   function performAddTimerTab() {
-    if (state.isRunning) {
-      state.elapsedBeforeStartMs = getElapsedMs();
-      state.isRunning = false;
-      state.startedAt = 0;
-      stopTicking();
-    }
+    freezeRunningTimer();
     snapshotActiveTimer();
     const tab = createTimerTab(state.nextTimerNumber);
     state.nextTimerNumber += 1;
@@ -953,8 +1149,11 @@
     const tab = state.timerTabs.find((item) => item.id === timerId);
     if (!tab || state.timerTabs.length <= 1) return;
     snapshotActiveTimer();
+    const removedTab = JSON.parse(JSON.stringify(tab));
+    const removedIndex = state.timerTabs.indexOf(tab);
+    const wasActive = tab.id === state.activeTimerId;
     if (tab.id === state.activeTimerId && state.isRunning) stopTicking();
-    const index = state.timerTabs.indexOf(tab);
+    const index = removedIndex;
     state.timerTabs.splice(index, 1);
     if (tab.id === state.activeTimerId) {
       applyTimerTab(state.timerTabs[Math.min(index, state.timerTabs.length - 1)]);
@@ -963,6 +1162,17 @@
     timerTabsSignature = "";
     saveState();
     render();
+    showToast("タイマータブを削除しました", () => {
+      state.timerTabs.splice(Math.min(removedIndex, state.timerTabs.length), 0, removedTab);
+      if (wasActive) {
+        applyTimerTab(removedTab);
+        syncInputsFromDuration();
+      }
+      timerTabsSignature = "";
+      saveState();
+      render();
+      showToast("タイマータブを元に戻しました");
+    });
   }
 
   function closeTimerTabConfirm() {
@@ -979,7 +1189,6 @@
     const timerId = pendingCloseTimerId;
     closeTimerTabConfirm();
     removeTimerTab(timerId);
-    showToast("タイマータブを削除しました");
   }
 
   function closeTimerTab(timerId) {
@@ -1014,10 +1223,20 @@
       tab.setAttribute("aria-selected", String(active));
     });
     elements.countdownSettings.hidden = state.mode !== MODES.COUNTDOWN;
+    elements.pomodoroEnabledInput.checked = state.pomodoroEnabled;
+    elements.pomodoroEnabledInput.disabled = state.hasStarted || getElapsedMs() > 0;
+    elements.pomodoroBreakSettings.hidden = !state.pomodoroEnabled;
+    elements.pomodoroBreakInput.disabled = state.isRunning;
   }
 
   function updateStatus() {
-    if (state.finishedAt) elements.statusText.textContent = "完了";
+    if (isPomodoroActive() && state.isRunning) {
+      elements.statusText.textContent = state.pomodoroPhase === "work" ? "ポモドーロ作業中" : "休憩中（作業時間には含まれません）";
+    }
+    else if (isPomodoroActive() && state.pomodoroPhaseElapsedBeforeStartMs > 0) {
+      elements.statusText.textContent = state.pomodoroPhase === "work" ? "作業を一時停止中" : "休憩を一時停止中";
+    }
+    else if (state.finishedAt) elements.statusText.textContent = "完了";
     else if (state.isRunning) elements.statusText.textContent = state.mode === MODES.COUNTDOWN ? "集中時間を計測中" : "作業時間を計測中";
     else if (state.mode === MODES.COUNTDOWN && state.elapsedBeforeStartMs > 0 && getCountdownSessionElapsedMs() === 0) {
       elements.statusText.textContent = "作業時間を保持して待機中";
@@ -1066,16 +1285,27 @@
   }
 
   function render() {
+    if (isPomodoroActive() && state.isRunning && getDisplayMs() <= 0) {
+      finishPomodoroPhase();
+      return;
+    }
     if (state.mode === MODES.COUNTDOWN && state.isRunning && getDisplayMs() <= 0) {
       finishCountdown();
       return;
     }
     updateDocumentTitle();
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
-    elements.timeDisplay.textContent = formatTime(getDisplayMs(), state.mode === MODES.COUNTDOWN ? "ceil" : "floor");
+    elements.timeDisplay.textContent = formatTime(
+      getDisplayMs(),
+      state.mode === MODES.COUNTDOWN ? "ceil" : "floor",
+    );
     elements.cumulativeTimeDisplay.hidden = state.mode !== MODES.COUNTDOWN;
     elements.cumulativeTimeDisplay.textContent = `作業時間 ${formatTime(getElapsedMs())}`;
-    const canResumeCurrentSession = state.mode === MODES.STOPWATCH
+    elements.pomodoroPhaseDisplay.hidden = !isPomodoroActive();
+    elements.pomodoroPhaseDisplay.textContent = state.pomodoroPhase === "work" ? "作業" : "休憩（作業時間外）";
+    const canResumeCurrentSession = isPomodoroActive()
+      ? state.pomodoroPhaseElapsedBeforeStartMs > 0
+      : state.mode === MODES.STOPWATCH
       ? state.elapsedBeforeStartMs > 0
       : getCountdownSessionElapsedMs() > 0;
     const primaryActionLabel = isFinishedCountdown()
@@ -1112,7 +1342,12 @@
     });
     if (state.mode === MODES.COUNTDOWN) {
       state.countdownDurationMs = getDurationFromInputs();
-      if (state.finishedAt || getCountdownSessionElapsedMs() >= state.countdownDurationMs) {
+      if (isPomodoroActive()) {
+        state.pomodoroBreakDurationMs = Math.max(1, normalizeSeconds(elements.pomodoroBreakInput.value, 5)) * 60000;
+        if (state.pomodoroPhaseElapsedBeforeStartMs >= getPomodoroPhaseDurationMs()) {
+          state.pomodoroPhaseElapsedBeforeStartMs = 0;
+        }
+      } else if (state.finishedAt || getCountdownSessionElapsedMs() >= state.countdownDurationMs) {
         state.countdownSessionStartElapsedMs = getElapsedMs();
       }
       syncInputsFromDuration();
@@ -1129,12 +1364,23 @@
 
   function pauseTimer() {
     if (!state.isRunning) return;
-    state.elapsedBeforeStartMs = getElapsedMs();
+    freezeRunningTimer();
+    saveState();
+    render();
+  }
+
+  function freezeRunningTimer() {
+    if (!state.isRunning) return;
+    if (isPomodoroActive()) {
+      const deltaMs = getRunningDeltaMs();
+      if (state.pomodoroPhase === "work") state.elapsedBeforeStartMs += deltaMs;
+      state.pomodoroPhaseElapsedBeforeStartMs += deltaMs;
+    } else {
+      state.elapsedBeforeStartMs = getElapsedMs();
+    }
     state.isRunning = false;
     state.startedAt = 0;
     stopTicking();
-    saveState();
-    render();
   }
 
   function prepareAdditionalCountdown() {
@@ -1180,6 +1426,8 @@
     state.taskName = "";
     state.taskMemo = "";
     state.firstStartedAt = 0;
+    state.pomodoroPhase = "work";
+    state.pomodoroPhaseElapsedBeforeStartMs = 0;
     stopTicking();
     if (state.mode === MODES.COUNTDOWN) {
       state.countdownDurationMs = getDurationFromInputs();
@@ -1227,14 +1475,31 @@
     render();
   }
 
-  function performModeSwitch(mode) {
-    if (state.mode === mode) return;
-    if (state.isRunning) {
-      state.elapsedBeforeStartMs = getElapsedMs();
-      stopTicking();
+  function finishPomodoroPhase() {
+    const completedPhase = state.pomodoroPhase;
+    if (completedPhase === "work") {
+      state.elapsedBeforeStartMs += Math.max(
+        0,
+        state.countdownDurationMs - state.pomodoroPhaseElapsedBeforeStartMs,
+      );
+      state.pomodoroPhase = "break";
+    } else {
+      state.pomodoroPhase = "work";
     }
+    state.pomodoroPhaseElapsedBeforeStartMs = 0;
     state.isRunning = false;
     state.startedAt = 0;
+    state.hasStarted = state.elapsedBeforeStartMs > 0;
+    stopTicking();
+    saveState();
+    playFinishSound();
+    render();
+    showToast(completedPhase === "work" ? "作業終了です。休憩を開始できます" : "休憩終了です。次の作業を開始できます");
+  }
+
+  function performModeSwitch(mode) {
+    if (state.mode === mode) return;
+    freezeRunningTimer();
     state.mode = mode;
     state.countdownSessionStartElapsedMs = state.elapsedBeforeStartMs;
     state.finishedAt = 0;
@@ -1281,12 +1546,7 @@
   }
 
   function setCountdownDuration(seconds) {
-    if (state.isRunning) {
-      state.elapsedBeforeStartMs = getElapsedMs();
-      state.isRunning = false;
-      state.startedAt = 0;
-      stopTicking();
-    }
+    freezeRunningTimer();
     state.countdownDurationMs = seconds * 1000;
     state.countdownSessionStartElapsedMs = state.elapsedBeforeStartMs;
     state.finishedAt = 0;
@@ -1361,13 +1621,17 @@
     render();
   }
 
-  function showToast(message) {
+  function showToast(message, undoAction = null) {
     window.clearTimeout(toastId);
-    elements.toast.textContent = message;
+    toastUndoAction = undoAction;
+    elements.toastMessage.textContent = message;
+    elements.toastUndoButton.hidden = !undoAction;
     elements.toast.classList.add("is-visible");
     toastId = window.setTimeout(() => {
       elements.toast.classList.remove("is-visible");
-    }, 3000);
+      elements.toastUndoButton.hidden = true;
+      toastUndoAction = null;
+    }, undoAction ? 7000 : 3000);
   }
 
   function moveToNextTask() {
@@ -1527,6 +1791,8 @@
       elements.editHistoryError.textContent = "作業時間を1秒以上入力してください";
       return;
     }
+    const previousRecord = JSON.parse(JSON.stringify(editingRecord));
+    const editedRecord = editingRecord;
     editingRecord.taskName = taskName;
     editingRecord.memo = elements.editMemoInput.value.trim().slice(0, 300);
     editingRecord.updatedAt = new Date().toISOString();
@@ -1534,7 +1800,14 @@
     saveRecords();
     elements.editHistoryDialog.close();
     renderHistory();
-    showToast("作業履歴を変更しました");
+    showToast("作業履歴を変更しました", () => {
+      const index = state.records.indexOf(editedRecord);
+      if (index >= 0) state.records[index] = previousRecord;
+      saveRecords();
+      renderHistoryDateOptions(previousRecord.date);
+      if (elements.historyDialog.open) renderHistory();
+      showToast("作業履歴の変更を元に戻しました");
+    });
   }
 
   function resumeFromHistory() {
@@ -1547,16 +1820,16 @@
   function confirmResumeFromHistory() {
     if (!editingRecord) return;
     const record = editingRecord;
-    if (state.isRunning) {
-      state.elapsedBeforeStartMs = getElapsedMs();
-      state.isRunning = false;
-      state.startedAt = 0;
-      stopTicking();
-    }
+    freezeRunningTimer();
     snapshotActiveTimer();
     const tab = createTimerTab(state.nextTimerNumber);
     state.nextTimerNumber += 1;
-    tab.mode = Object.values(MODES).includes(record.mode) ? record.mode : getDefaultMode();
+    tab.mode = record.mode === "pomodoro"
+      ? MODES.COUNTDOWN
+      : Object.values(MODES).includes(record.mode)
+        ? record.mode
+        : getDefaultMode();
+    tab.pomodoroEnabled = record.mode === "pomodoro";
     tab.taskName = record.taskName.slice(0, 80);
     tab.taskMemo = typeof record.memo === "string" ? record.memo.slice(0, 300) : "";
     const recordStartedAt = new Date(record.firstStartedAt).getTime();
@@ -1610,13 +1883,20 @@
       closeDeleteConfirm();
       return;
     }
+    const removedRecord = state.records[recordIndex];
     state.records.splice(recordIndex, 1);
     closeDeleteConfirm();
     if (elements.editHistoryDialog.open) elements.editHistoryDialog.close();
     saveRecords();
     renderHistoryDateOptions();
     renderHistory();
-    showToast("作業履歴を削除しました");
+    showToast("作業履歴を削除しました", () => {
+      state.records.splice(Math.min(recordIndex, state.records.length), 0, removedRecord);
+      saveRecords();
+      renderHistoryDateOptions(removedRecord.date);
+      if (elements.historyDialog.open) renderHistory();
+      showToast("作業履歴を元に戻しました");
+    });
   }
 
   function openHistoryDialog() {
@@ -2014,8 +2294,25 @@
       if (elements.historyDialog.open) renderHistory();
       showToast(elements.aggregationEnabledInput.checked ? "高度な計測を有効にしました" : "高度な計測を無効にしました");
     });
+    elements.themeSelect.addEventListener("change", () => {
+      const theme = elements.themeSelect.value;
+      if (!["system", "light", "dark"].includes(theme)) return;
+      if (theme === "system") localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, theme);
+      applyTheme(theme);
+      showToast("表示テーマを変更しました");
+    });
+    elements.toastUndoButton.addEventListener("click", () => {
+      const action = toastUndoAction;
+      toastUndoAction = null;
+      elements.toastUndoButton.hidden = true;
+      if (action) action();
+    });
     elements.resetPopupSizeButton.addEventListener("click", resetPopupSize);
     elements.resetMinimizedPopupSizeButton.addEventListener("click", resetMinimizedPopupSize);
+    elements.backupExportButton.addEventListener("click", exportBackup);
+    elements.backupImportButton.addEventListener("click", () => elements.backupFileInput.click());
+    elements.backupFileInput.addEventListener("change", importBackup);
     elements.cancelTimerNavigationButton.addEventListener("click", closeTimerNavigationConfirm);
     elements.confirmTimerNavigationButton.addEventListener("click", confirmTimerNavigation);
     elements.timerNavigationConfirmOverlay.addEventListener("click", (event) => {
@@ -2032,6 +2329,24 @@
       if (event.target === elements.timerTabConfirmOverlay) closeTimerTabConfirm();
     });
     elements.modeTabs.forEach((tab) => tab.addEventListener("click", () => switchMode(tab.dataset.mode)));
+    elements.pomodoroEnabledInput.addEventListener("change", () => {
+      if (elements.pomodoroEnabledInput.disabled) return;
+      state.pomodoroEnabled = elements.pomodoroEnabledInput.checked;
+      state.pomodoroPhase = "work";
+      state.pomodoroPhaseElapsedBeforeStartMs = 0;
+      state.pomodoroBreakDurationMs =
+        Math.max(1, normalizeSeconds(elements.pomodoroBreakInput.value, 5)) * 60000;
+      state.countdownSessionStartElapsedMs = state.elapsedBeforeStartMs;
+      saveState();
+      render();
+      showToast(state.pomodoroEnabled ? "ポモドーロを有効にしました" : "ポモドーロを無効にしました");
+    });
+    elements.pomodoroBreakInput.addEventListener("change", () => {
+      state.pomodoroBreakDurationMs =
+        Math.max(1, normalizeSeconds(elements.pomodoroBreakInput.value, 5)) * 60000;
+      syncInputsFromDuration();
+      saveState();
+    });
     [elements.hoursInput, elements.minutesInput, elements.secondsInput].forEach((input) => input.addEventListener("change", () => {
       setCountdownDuration(getDurationFromInputs() / 1000);
     }));
@@ -2107,6 +2422,10 @@
   }
 
   function initialize() {
+    applyTheme();
+    if (localStorage.getItem(DEFAULT_MODE_KEY) === "pomodoro") {
+      localStorage.setItem(DEFAULT_MODE_KEY, MODES.COUNTDOWN);
+    }
     loadState();
     loadDailyMemos();
     const isPopup = new URLSearchParams(location.search).has("popup");
@@ -2120,6 +2439,13 @@
     if (isPopup) {
       window.requestAnimationFrame(() => applyPopupSize(window, getPreferredPopupSize(window)));
     }
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      navigator.serviceWorker.register("./service-worker.js").catch(() => {
+        showToast("オフライン機能を準備できませんでした");
+      });
+    }
+    window.addEventListener("offline", () => showToast("オフラインになりました。保存済みの機能を利用できます"));
+    window.addEventListener("online", () => showToast("オンラインに戻りました"));
   }
 
   initialize();
