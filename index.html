@@ -291,6 +291,13 @@
           </div>
         </div>
         <p id="history-date-context" class="history-date-context" hidden>過去の履歴（参照のみ）</p>
+        <section class="daily-memo-section">
+          <label class="dialog-field">
+            <span>この日のメモ</span>
+            <textarea id="daily-memo-input" maxlength="1000" rows="3" placeholder="1日単位のメモを入力"></textarea>
+          </label>
+          <button id="save-daily-memo-button" class="secondary-button" type="button">日別メモを保存</button>
+        </section>
         <section id="history-summary" class="history-summary" hidden></section>
         <div id="history-list" class="history-list" aria-live="polite"></div>
         <p class="history-time-help">時間帯は「最初の計測開始時刻～履歴追加時刻」を表示しています。</p>
@@ -309,6 +316,31 @@
           </section>
         </div>
       </section>
+    </dialog>
+
+    <dialog id="export-history-dialog" class="modal">
+      <form id="export-history-form" class="modal-card">
+        <div class="modal-header">
+          <h2>履歴の出力設定</h2>
+          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+        </div>
+        <fieldset id="export-duration-format-group" class="export-option-group">
+          <legend>作業時間の表現</legend>
+          <label><input type="radio" name="export-duration-format" value="minutes" checked> 分表記（65分）</label>
+          <label><input type="radio" name="export-duration-format" value="clock"> 時間表記（01:05:00）</label>
+        </fieldset>
+        <fieldset class="export-option-group">
+          <legend>出力する時間</legend>
+          <label><input id="export-time-range-input" type="checkbox" checked> 開始・終了時間</label>
+          <label><input id="export-duration-input" type="checkbox" checked> 作業時間</label>
+        </fieldset>
+        <fieldset class="export-option-group">
+          <legend>メモ</legend>
+          <label><input id="export-memo-input" type="checkbox" checked> タスクメモ・日別メモを出力する</label>
+        </fieldset>
+        <p id="export-history-error" class="form-error" aria-live="polite"></p>
+        <button class="primary-button modal-submit" type="submit">TXTファイルを出力</button>
+      </form>
     </dialog>
 
     <dialog id="edit-history-dialog" class="modal">
