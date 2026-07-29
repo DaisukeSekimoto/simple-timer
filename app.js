@@ -5,6 +5,7 @@
   const MINIMIZED_POPUP_SIZE_KEY = "simple-timer-minimized-popup-size";
   const DEFAULT_MODE_KEY = "simple-timer-default-mode";
   const AGGREGATION_ENABLED_KEY = "simple-timer-aggregation-enabled";
+  const DAILY_MEMOS_KEY = "simple-timer-daily-memos";
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
   const TICK_INTERVAL_MS = 250;
@@ -68,8 +69,17 @@
     historyDateContext: document.querySelector("#history-date-context"),
     historyList: document.querySelector("#history-list"),
     historySummary: document.querySelector("#history-summary"),
+    dailyMemoInput: document.querySelector("#daily-memo-input"),
+    saveDailyMemoButton: document.querySelector("#save-daily-memo-button"),
     addHistoryButton: document.querySelector("#add-history-button"),
     exportHistoryButton: document.querySelector("#export-history-button"),
+    exportHistoryDialog: document.querySelector("#export-history-dialog"),
+    exportHistoryForm: document.querySelector("#export-history-form"),
+    exportDurationFormatGroup: document.querySelector("#export-duration-format-group"),
+    exportTimeRangeInput: document.querySelector("#export-time-range-input"),
+    exportDurationInput: document.querySelector("#export-duration-input"),
+    exportMemoInput: document.querySelector("#export-memo-input"),
+    exportHistoryError: document.querySelector("#export-history-error"),
     addHistoryDialog: document.querySelector("#add-history-dialog"),
     addHistoryForm: document.querySelector("#add-history-form"),
     manualDate: document.querySelector("#manual-date"),
@@ -155,6 +165,7 @@
   let dateTimeIntervalId = 0;
   let popupFitFrame = 0;
   let popupFitSignature = "";
+  let dailyMemos = {};
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -398,6 +409,24 @@
 
   function saveRecords() {
     localStorage.setItem(RECORDS_KEY, JSON.stringify(state.records));
+  }
+
+  function loadDailyMemos() {
+    try {
+      const savedMemos = JSON.parse(localStorage.getItem(DAILY_MEMOS_KEY) || "{}");
+      dailyMemos = savedMemos && typeof savedMemos === "object" && !Array.isArray(savedMemos)
+        ? Object.fromEntries(Object.entries(savedMemos)
+          .filter(([date, memo]) => /^\d{4}-\d{2}-\d{2}$/.test(date) && typeof memo === "string")
+          .map(([date, memo]) => [date, memo.slice(0, 1000)]))
+        : {};
+    } catch {
+      localStorage.removeItem(DAILY_MEMOS_KEY);
+      dailyMemos = {};
+    }
+  }
+
+  function saveDailyMemos() {
+    localStorage.setItem(DAILY_MEMOS_KEY, JSON.stringify(dailyMemos));
   }
 
   function loadRecords() {
@@ -1379,6 +1408,9 @@
     elements.historyDialog.classList.toggle("is-viewing-past", !isViewingToday);
     elements.historyDateContext.hidden = isViewingToday;
     elements.addHistoryButton.hidden = !isViewingToday;
+    elements.dailyMemoInput.value = dailyMemos[elements.historyDate.value] || "";
+    elements.dailyMemoInput.readOnly = !isViewingToday;
+    elements.saveDailyMemoButton.hidden = !isViewingToday;
     elements.unitButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.unit === state.historyUnit));
     renderHistorySummary(records);
     elements.historyList.replaceChildren();
@@ -1440,7 +1472,7 @@
 
   function renderHistoryDateOptions(preferredDate = elements.historyDate.value) {
     const today = localDateKey();
-    const availableDates = [...new Set([today, ...state.records.map((record) => record.date)])]
+    const availableDates = [...new Set([today, ...state.records.map((record) => record.date), ...Object.keys(dailyMemos)])]
       .sort((a, b) => b.localeCompare(a));
     elements.historyDate.replaceChildren();
     availableDates.forEach((date) => {
@@ -1450,6 +1482,18 @@
       elements.historyDate.append(option);
     });
     elements.historyDate.value = availableDates.includes(preferredDate) ? preferredDate : today;
+  }
+
+  function saveSelectedDailyMemo() {
+    const date = elements.historyDate.value;
+    if (!date) return;
+    const memo = elements.dailyMemoInput.value.trim().slice(0, 1000);
+    if (memo) dailyMemos[date] = memo;
+    else delete dailyMemos[date];
+    saveDailyMemos();
+    renderHistoryDateOptions(date);
+    renderHistory();
+    showToast(memo ? "日別メモを保存しました" : "日別メモを削除しました");
   }
 
   function openEditHistoryDialog(record) {
@@ -1670,16 +1714,33 @@
     elements.statusText.textContent = "作業履歴を追加しました";
   }
 
-  function exportAllHistory() {
-    if (!state.records.length) {
-      elements.historyList.replaceChildren();
-      const empty = document.createElement("p");
-      empty.className = "empty-message";
-      empty.textContent = "出力できる記録がありません";
-      elements.historyList.append(empty);
+  function updateExportDurationFormatState() {
+    const isDisabled = !elements.exportDurationInput.checked;
+    elements.exportDurationFormatGroup.disabled = isDisabled;
+    elements.exportDurationFormatGroup.classList.toggle("is-disabled", isDisabled);
+  }
+
+  function openExportHistoryDialog() {
+    elements.exportHistoryError.textContent = "";
+    updateExportDurationFormatState();
+    elements.exportHistoryDialog.showModal();
+  }
+
+  function exportAllHistory(event) {
+    event.preventDefault();
+    const includeTimeRange = elements.exportTimeRangeInput.checked;
+    const includeDuration = elements.exportDurationInput.checked;
+    const includeMemo = elements.exportMemoInput.checked;
+    if (!includeTimeRange && !includeDuration) {
+      elements.exportHistoryError.textContent = "開始・終了時間または作業時間を1つ以上選択してください";
       return;
     }
-
+    const hasExportableMemo = includeMemo && Object.values(dailyMemos).some((memo) => memo.trim());
+    if (!state.records.length && !hasExportableMemo) {
+      elements.exportHistoryError.textContent = "出力できる履歴または日別メモがありません";
+      return;
+    }
+    const durationFormat = new FormData(elements.exportHistoryForm).get("export-duration-format");
     const recordsByDate = new Map();
     [...state.records]
       .sort((a, b) => a.date.localeCompare(b.date) || String(a.createdAt || "").localeCompare(String(b.createdAt || "")))
@@ -1687,18 +1748,34 @@
         if (!recordsByDate.has(record.date)) recordsByDate.set(record.date, []);
         recordsByDate.get(record.date).push(record);
       });
-
-    const taskColumnWidth = Math.max(12, ...state.records.map((record) => displayWidth(record.taskName))) + 2;
-    const minuteValues = state.records.map((record) => `${Math.round(record.durationMs / 60000)}分`);
-    const minuteColumnWidth = Math.max(4, ...minuteValues.map(displayWidth)) + 2;
+    const dates = [...new Set([
+      ...recordsByDate.keys(),
+      ...(includeMemo ? Object.keys(dailyMemos).filter((date) => dailyMemos[date].trim()) : []),
+    ])].sort();
     const lines = ["Simple Timer 作業履歴", ""];
-    recordsByDate.forEach((records, date) => {
+    dates.forEach((date) => {
       lines.push(date);
-      lines.push(`${padDisplayEnd("作業名", taskColumnWidth)}${padDisplayEnd("分", minuteColumnWidth)}時間`);
-      records.forEach((record) => {
-        const minutes = `${Math.round(record.durationMs / 60000)}分`;
-        lines.push(`${padDisplayEnd(record.taskName, taskColumnWidth)}${padDisplayEnd(minutes, minuteColumnWidth)}${formatTime(record.durationMs)}`);
-      });
+      if (includeMemo && dailyMemos[date]) {
+        lines.push(`日別メモ: ${dailyMemos[date].replace(/\n/g, "\n  ")}`);
+      }
+      const records = recordsByDate.get(date) || [];
+      if (records.length) {
+        const headings = ["作業名"];
+        if (includeTimeRange) headings.push("開始～終了");
+        if (includeDuration) headings.push("作業時間");
+        lines.push(headings.join("\t"));
+        records.forEach((record) => {
+          const columns = [record.taskName];
+          if (includeTimeRange) columns.push(formatHistoryTimeRange(record) || "～");
+          if (includeDuration) {
+            columns.push(durationFormat === "clock"
+              ? formatTime(record.durationMs)
+              : `${Math.round(record.durationMs / 60000)}分`);
+          }
+          lines.push(columns.join("\t"));
+          if (includeMemo && record.memo) lines.push(`  メモ: ${record.memo.replace(/\n/g, "\n    ")}`);
+        });
+      }
       lines.push("");
     });
 
@@ -1711,7 +1788,9 @@
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    elements.exportHistoryDialog.close();
     elements.statusText.textContent = "全履歴をTXT出力しました";
+    showToast("選択した内容で履歴を出力しました");
   }
 
   function openPopupWindow() {
@@ -1751,7 +1830,10 @@
     if (!pip || typeof pip.requestWindow !== "function") return false;
     try {
       const hadSavedSize = Boolean(loadSavedPopupSize());
-      const pipWindow = await pip.requestWindow(getPreferredPopupSize(window));
+      const pipWindow = await pip.requestWindow({
+        ...getPreferredPopupSize(window),
+        preferInitialWindowPlacement: true,
+      });
       const styleLink = pipWindow.document.createElement("link");
       styleLink.rel = "stylesheet"; styleLink.href = "./styles.css";
       pipWindow.document.head.append(styleLink);
@@ -1986,7 +2068,10 @@
       elements.editHistoryDialog.close();
       deleteHistoryRecord(record);
     });
-    elements.exportHistoryButton.addEventListener("click", exportAllHistory);
+    elements.saveDailyMemoButton.addEventListener("click", saveSelectedDailyMemo);
+    elements.exportHistoryButton.addEventListener("click", openExportHistoryDialog);
+    elements.exportDurationInput.addEventListener("change", updateExportDurationFormatState);
+    elements.exportHistoryForm.addEventListener("submit", exportAllHistory);
     elements.cancelDeleteButton.addEventListener("click", closeDeleteConfirm);
     elements.confirmDeleteButton.addEventListener("click", confirmDeleteHistoryRecord);
     elements.confirmOverlay.addEventListener("click", (event) => {
@@ -2023,6 +2108,7 @@
 
   function initialize() {
     loadState();
+    loadDailyMemos();
     const isPopup = new URLSearchParams(location.search).has("popup");
     elements.body.classList.toggle("is-popup", isPopup);
     if (isPopup) suppressPopupSizeSaveUntil = now() + 1200;
