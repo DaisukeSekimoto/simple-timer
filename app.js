@@ -80,6 +80,10 @@
     pomodoroBreakSettings: document.querySelector("#pomodoro-break-settings"),
     pomodoroBreakInput: document.querySelector("#pomodoro-break-input"),
     pomodoroPhaseDisplay: document.querySelector("#pomodoro-phase-display"),
+    countdownDurationButton: document.querySelector("#countdown-duration-button"),
+    countdownDurationDisplay: document.querySelector("#countdown-duration-display"),
+    countdownDurationDialog: document.querySelector("#countdown-duration-dialog"),
+    countdownDurationForm: document.querySelector("#countdown-duration-form"),
     hoursInput: document.querySelector("#hours-input"),
     minutesInput: document.querySelector("#minutes-input"),
     secondsInput: document.querySelector("#seconds-input"),
@@ -561,11 +565,17 @@
     return Math.max(1, hours * 3600 + minutes * 60 + seconds) * 1000;
   }
 
+  function setCountdownDurationInputs(totalSeconds) {
+    const normalizedSeconds = Math.max(1, Math.round(totalSeconds));
+    elements.hoursInput.value = String(Math.floor(normalizedSeconds / 3600));
+    elements.minutesInput.value = String(Math.floor((normalizedSeconds % 3600) / 60));
+    elements.secondsInput.value = String(normalizedSeconds % 60);
+  }
+
   function syncInputsFromDuration() {
     const totalSeconds = Math.round(state.countdownDurationMs / 1000);
-    elements.hoursInput.value = String(Math.floor(totalSeconds / 3600));
-    elements.minutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
-    elements.secondsInput.value = String(totalSeconds % 60);
+    setCountdownDurationInputs(totalSeconds);
+    elements.countdownDurationDisplay.textContent = formatTime(state.countdownDurationMs);
     elements.pomodoroEnabledInput.checked = state.pomodoroEnabled;
     elements.pomodoroBreakInput.value = String(Math.round(state.pomodoroBreakDurationMs / 60000));
   }
@@ -847,11 +857,17 @@
     return ["light", "dark"].includes(theme) ? theme : "system";
   }
 
+  function resolveTheme(theme) {
+    if (theme !== "system") return theme;
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
   function applyTheme(theme = getTheme()) {
-    const documents = new Set([document, elements.app?.ownerDocument].filter(Boolean));
-    documents.forEach((currentDocument) => {
-      currentDocument.documentElement.dataset.theme = theme;
-    });
+    document.documentElement.dataset.theme = theme;
+    const appDocument = elements.app?.ownerDocument;
+    if (appDocument && appDocument !== document) {
+      appDocument.documentElement.dataset.theme = resolveTheme(theme);
+    }
   }
 
   function getBackupSummary(storage) {
@@ -1317,7 +1333,7 @@
     document.title = title;
     const currentDocument = elements.app.ownerDocument;
     if (currentDocument !== document) currentDocument.title = title;
-    elements.appTitle.textContent = isPopupContext() && state.taskName.trim()
+    elements.appTitle.textContent = isPopupContext() && state.isMinimized && state.taskName.trim()
       ? state.taskName.trim()
       : "Simple Timer";
   }
@@ -1333,7 +1349,7 @@
       state.mode === MODES.COUNTDOWN ? "ceil" : "floor",
     );
     elements.cumulativeTimeDisplay.hidden = state.mode !== MODES.COUNTDOWN;
-    elements.timeMetaRow.hidden = state.mode !== MODES.COUNTDOWN;
+    elements.timeMetaRow.hidden = false;
     elements.cumulativeTimeDisplay.textContent = `作業時間 ${formatTime(getElapsedMs())}`;
     elements.pomodoroPhaseDisplay.hidden = !isPomodoroActive();
     elements.pomodoroPhaseDisplay.textContent = state.pomodoroPhase === "work" ? "作業" : "休憩（作業時間外）";
@@ -2268,7 +2284,7 @@
       const styleLink = pipWindow.document.createElement("link");
       styleLink.rel = "stylesheet"; styleLink.href = "./styles.css";
       pipWindow.document.head.append(styleLink);
-      pipWindow.document.documentElement.dataset.theme = getTheme();
+      pipWindow.document.documentElement.dataset.theme = resolveTheme(getTheme());
       pipWindow.document.body.className = "is-popup";
       pipWindow.document.body.append(elements.app);
       popupFitSignature = "";
@@ -2518,10 +2534,21 @@
       syncInputsFromDuration();
       saveState();
     });
-    [elements.hoursInput, elements.minutesInput, elements.secondsInput].forEach((input) => input.addEventListener("change", () => {
+    elements.countdownDurationButton.addEventListener("click", () => {
+      syncInputsFromDuration();
+      elements.countdownDurationDialog.showModal();
+      window.setTimeout(() => elements.hoursInput.focus(), 0);
+    });
+    elements.countdownDurationForm.addEventListener("submit", (event) => {
+      event.preventDefault();
       setCountdownDuration(getDurationFromInputs() / 1000);
+      elements.countdownDurationDialog.close();
+      showToast("カウントダウン時間を変更しました");
+    });
+    elements.countdownDurationDialog.addEventListener("close", syncInputsFromDuration);
+    elements.presetButtons.forEach((button) => button.addEventListener("click", () => {
+      setCountdownDurationInputs(Number.parseInt(button.dataset.seconds, 10));
     }));
-    elements.presetButtons.forEach((button) => button.addEventListener("click", () => setCountdownDuration(Number.parseInt(button.dataset.seconds, 10))));
     elements.taskButton.addEventListener("click", () => openTaskDialog(false));
     elements.taskDialogForm.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -2627,6 +2654,9 @@
     }
     window.addEventListener("offline", () => showToast("オフラインになりました。保存済みの機能を利用できます"));
     window.addEventListener("online", () => showToast("オンラインに戻りました"));
+    window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+      if (getTheme() === "system") applyTheme("system");
+    });
   }
 
   initialize();

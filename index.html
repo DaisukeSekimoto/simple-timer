@@ -65,26 +65,11 @@
           </div>
 
           <fieldset id="countdown-settings" class="countdown-settings">
-            <div class="time-inputs">
-              <label>
-                <span>時</span>
-                <input id="hours-input" type="number" inputmode="numeric" min="0" max="99" step="1" value="0">
-              </label>
-              <label>
-                <span>分</span>
-                <input id="minutes-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="25">
-              </label>
-              <label>
-                <span>秒</span>
-                <input id="seconds-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
-              </label>
-            </div>
-            <div class="preset-row" aria-label="プリセット">
-              <button type="button" class="preset-button" data-seconds="300">5分</button>
-              <button type="button" class="preset-button" data-seconds="900">15分</button>
-              <button type="button" class="preset-button" data-seconds="1500">25分</button>
-              <button type="button" class="preset-button" data-seconds="3000">50分</button>
-            </div>
+            <button id="countdown-duration-button" class="countdown-duration-button" type="button">
+              <span>作業時間</span>
+              <strong id="countdown-duration-display">00:25:00</strong>
+              <span>変更</span>
+            </button>
             <div class="pomodoro-footer">
               <div id="pomodoro-break-settings" class="pomodoro-break-settings" aria-hidden="true">
                 <label>
@@ -167,6 +152,38 @@
         </section>
       </div>
 
+    <dialog id="countdown-duration-dialog" class="modal">
+      <form id="countdown-duration-form" class="modal-card">
+        <div class="modal-header">
+          <h2>カウントダウン時間を設定</h2>
+          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+        </div>
+        <fieldset class="countdown-settings">
+          <div class="time-inputs">
+            <label>
+              <span>時</span>
+              <input id="hours-input" type="number" inputmode="numeric" min="0" max="99" step="1" value="0">
+            </label>
+            <label>
+              <span>分</span>
+              <input id="minutes-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="25">
+            </label>
+            <label>
+              <span>秒</span>
+              <input id="seconds-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
+            </label>
+          </div>
+          <div class="preset-row" aria-label="プリセット">
+            <button type="button" class="preset-button" data-seconds="300">5分</button>
+            <button type="button" class="preset-button" data-seconds="900">15分</button>
+            <button type="button" class="preset-button" data-seconds="1500">25分</button>
+            <button type="button" class="preset-button" data-seconds="3000">50分</button>
+          </div>
+        </fieldset>
+        <button class="primary-button modal-submit" type="submit">この時間に設定</button>
+      </form>
+    </dialog>
+
     <dialog id="task-dialog" class="modal">
       <form id="task-dialog-form" class="modal-card">
         <div class="modal-header">
@@ -241,7 +258,8 @@
             <input id="aggregation-enabled-input" type="checkbox">
             <span>類似タスク名の統一確認とタスク別集計を使用する</span>
           </label>
-          <p class="settings-description">同一タスク名で1日あたりの作業時間を集計します。</p>
+          <p class="settings-description settings-check-description">同一タスク名で1日あたりの作業時間を集計します。</p>
+
         </section>
         <section class="settings-section" aria-labelledby="shortcut-settings-title">
           <h3 id="shortcut-settings-title">ショートカットキー</h3>

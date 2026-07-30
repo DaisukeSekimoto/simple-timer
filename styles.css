@@ -369,7 +369,7 @@ h1 {
 }
 
 .time-display {
-  padding: 24px 16px 18px;
+  padding: 24px 16px 0px;
   font-size: clamp(3rem, 16vw, 4.7rem);
   font-variant-numeric: tabular-nums;
   font-weight: 800;
@@ -383,7 +383,7 @@ h1 {
   min-height: 24px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  margin: -9px 0 16px;
+  margin: -9px 0 0px;
   padding: 0 10px;
 }
 
@@ -501,6 +501,41 @@ h1 {
 
 .countdown-settings legend {
   padding: 0;
+}
+
+.countdown-duration-button {
+  display: grid;
+  min-height: 42px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+  text-align: left;
+}
+
+.countdown-duration-button:hover,
+.countdown-duration-button:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--subtle-soft);
+}
+
+.countdown-duration-button > span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.countdown-duration-button > span:last-child {
+  color: var(--accent);
+}
+
+.countdown-duration-button strong {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .time-inputs {
@@ -785,6 +820,10 @@ h1 {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
+}
+
+.settings-check-description {
+  padding-left: 27px;
 }
 
 .settings-reset-button {
@@ -1076,12 +1115,12 @@ kbd {
 }
 
 #history-dialog.is-viewing-past .history-item {
-  color: #172026;
-  border-bottom-color: #c8d0d6;
+  color: var(--text);
+  border-bottom-color: var(--line-strong);
 }
 
 #history-dialog.is-viewing-past .history-item-meta {
-  color: #52616b;
+  color: var(--muted);
 }
 
 #history-dialog.is-viewing-past .history-actions {
@@ -1293,8 +1332,7 @@ kbd {
   margin-bottom: 8px;
 }
 
-.is-popup #popup-button,
-.is-popup #settings-button {
+.is-popup #popup-button {
   display: none;
 }
 
@@ -1332,7 +1370,8 @@ kbd {
 .is-popup.is-minimized .timer-workspace-tabs,
 .is-popup.is-minimized .timer-form,
 .is-popup.is-minimized .control-row,
-.is-popup.is-minimized #history-button {
+.is-popup.is-minimized #history-button,
+.is-popup.is-minimized #settings-button {
   display: none;
 }
 
