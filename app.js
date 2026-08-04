@@ -7,6 +7,7 @@
   const AGGREGATION_ENABLED_KEY = "simple-timer-aggregation-enabled";
   const DAILY_MEMOS_KEY = "simple-timer-daily-memos";
   const THEME_KEY = "simple-timer-theme";
+  const PRIMARY_TIME_DISPLAY_KEY = "simple-timer-primary-time-display";
   const BACKUP_FORMAT = "simple-timer-backup";
   const BACKUP_VERSION = 1;
   const BACKUP_STORAGE_KEYS = [
@@ -18,6 +19,7 @@
     AGGREGATION_ENABLED_KEY,
     DAILY_MEMOS_KEY,
     THEME_KEY,
+    PRIMARY_TIME_DISPLAY_KEY,
   ];
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
@@ -34,6 +36,8 @@
     panel: document.querySelector(".timer-panel"),
     statusText: document.querySelector("#status-text"),
     recordDate: document.querySelector("#record-date"),
+    timeDisplayArea: document.querySelector("#time-display-area"),
+    secondaryTimeDisplay: document.querySelector("#secondary-time-display"),
     toast: document.querySelector("#toast"),
     toastMessage: document.querySelector("#toast-message"),
     toastUndoButton: document.querySelector("#toast-undo-button"),
@@ -56,6 +60,7 @@
     defaultModeSelect: document.querySelector("#default-mode-select"),
     aggregationEnabledInput: document.querySelector("#aggregation-enabled-input"),
     themeSelect: document.querySelector("#theme-select"),
+    primaryTimeDisplaySelect: document.querySelector("#primary-time-display-select"),
     backupExportButton: document.querySelector("#backup-export-button"),
     backupImportButton: document.querySelector("#backup-import-button"),
     backupFileInput: document.querySelector("#backup-file-input"),
@@ -84,6 +89,9 @@
     countdownDurationDisplay: document.querySelector("#countdown-duration-display"),
     countdownDurationDialog: document.querySelector("#countdown-duration-dialog"),
     countdownDurationForm: document.querySelector("#countdown-duration-form"),
+    untilTimeInput: document.querySelector("#until-time-input"),
+    applyUntilTimeButton: document.querySelector("#apply-until-time-button"),
+    untilTimeStatus: document.querySelector("#until-time-status"),
     hoursInput: document.querySelector("#hours-input"),
     minutesInput: document.querySelector("#minutes-input"),
     secondsInput: document.querySelector("#seconds-input"),
@@ -207,6 +215,7 @@
   let dailyMemoSaveId = 0;
   let dailyMemoDirty = false;
   let dailyMemoEditingDate = "";
+  let currentClockText = "00:00:00";
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -237,7 +246,9 @@
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
     const seconds = String(date.getSeconds()).padStart(2, "0");
-    elements.recordDate.textContent = `${dateText}(${weekdays[date.getDay()]}) ${hours}:${minutes}:${seconds}`;
+    elements.recordDate.textContent = `${dateText}(${weekdays[date.getDay()]})`;
+    currentClockText = `${hours}:${minutes}:${seconds}`;
+    if (state.timerTabs.length) render();
   }
 
   function resetTimersForNewDay(dateKey = localDateKey(), notify = true) {
@@ -256,12 +267,26 @@
 
   function startDateTimeUpdates() {
     if (dateTimeIntervalId || pendingNewDateKey) return;
-    dateTimeIntervalId = window.setInterval(updateDateTime, 1000);
+    const scheduleNextUpdate = () => {
+      if (pendingNewDateKey) {
+        dateTimeIntervalId = 0;
+        return;
+      }
+      updateDateTime();
+      if (pendingNewDateKey) {
+        dateTimeIntervalId = 0;
+        return;
+      }
+      // 毎回現在時刻から次の秒境界を求め、タイマーの遅延を累積させない。
+      const delay = Math.max(20, 1000 - (Date.now() % 1000) + 10);
+      dateTimeIntervalId = window.setTimeout(scheduleNextUpdate, delay);
+    };
+    scheduleNextUpdate();
   }
 
   function stopDateTimeUpdates() {
     if (!dateTimeIntervalId) return;
-    window.clearInterval(dateTimeIntervalId);
+    window.clearTimeout(dateTimeIntervalId);
     dateTimeIntervalId = 0;
   }
 
@@ -572,6 +597,30 @@
     elements.secondsInput.value = String(normalizedSeconds % 60);
   }
 
+  function applyUntilTimeToInputs() {
+    if (!elements.untilTimeInput.value) {
+      elements.untilTimeStatus.textContent = "終了時刻を入力してください。";
+      return;
+    }
+    const [hours, minutes] = elements.untilTimeInput.value.split(":").map(Number);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+      elements.untilTimeStatus.textContent = "終了時刻を正しく入力してください。";
+      return;
+    }
+    const current = new Date();
+    const target = new Date(current);
+    target.setHours(hours, minutes, 0, 0);
+    let dayLabel = "本日";
+    if (target.getTime() <= current.getTime()) {
+      target.setDate(target.getDate() + 1);
+      dayLabel = "翌日";
+    }
+    const durationSeconds = Math.max(1, Math.ceil((target.getTime() - current.getTime()) / 1000));
+    setCountdownDurationInputs(durationSeconds);
+    elements.untilTimeStatus.textContent =
+      `${dayLabel} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}まで（残り ${formatTime(durationSeconds * 1000)}）`;
+  }
+
   function syncInputsFromDuration() {
     const totalSeconds = Math.round(state.countdownDurationMs / 1000);
     setCountdownDurationInputs(totalSeconds);
@@ -785,10 +834,12 @@
     const horizontalPadding = (Number.parseFloat(appStyle.paddingLeft) || 0) + (Number.parseFloat(appStyle.paddingRight) || 0);
     const isCurrentlyMinimized = state.isMinimized && isPopupContext();
     const timerHeight = isCurrentlyMinimized
-      ? elements.timeDisplay.getBoundingClientRect().height + elements.cumulativeTimeDisplay.getBoundingClientRect().height
+      ? Math.ceil(elements.panel.getBoundingClientRect().height)
       : 96;
-    const contentHeight = headerHeight + timerHeight + verticalPadding + 4;
-    const contentWidth = isCurrentlyMinimized ? header.scrollWidth + horizontalPadding : 360;
+    const contentHeight = headerHeight + timerHeight + verticalPadding + 2;
+    const contentWidth = isCurrentlyMinimized
+      ? Math.max(header.scrollWidth, elements.panel.scrollWidth) + horizontalPadding
+      : 360;
     const size = {
       width: Math.round(clamp(contentWidth, MINIMIZED_POPUP_SIZE_LIMITS.minWidth, Math.min(MINIMIZED_POPUP_SIZE_LIMITS.maxWidth, availableWidth))),
       height: Math.round(clamp(contentHeight, MINIMIZED_POPUP_SIZE_LIMITS.minHeight, Math.min(MINIMIZED_POPUP_SIZE_LIMITS.maxHeight, availableHeight))),
@@ -841,6 +892,7 @@
     elements.defaultModeSelect.value = getDefaultMode();
     elements.aggregationEnabledInput.checked = isAggregationEnabled();
     elements.themeSelect.value = getTheme();
+    elements.primaryTimeDisplaySelect.value = getPrimaryTimeDisplay();
     elements.backupStatus.textContent = "";
     elements.backupStatus.classList.remove("is-error");
     updatePopupSizeSettings();
@@ -855,6 +907,18 @@
   function getTheme() {
     const theme = localStorage.getItem(THEME_KEY);
     return ["light", "dark"].includes(theme) ? theme : "system";
+  }
+
+  function getPrimaryTimeDisplay() {
+    return localStorage.getItem(PRIMARY_TIME_DISPLAY_KEY) === "clock" ? "clock" : "measurement";
+  }
+
+  function togglePrimaryTimeDisplay() {
+    const value = getPrimaryTimeDisplay() === "measurement" ? "clock" : "measurement";
+    localStorage.setItem(PRIMARY_TIME_DISPLAY_KEY, value);
+    elements.primaryTimeDisplaySelect.value = value;
+    render();
+    showToast(value === "measurement" ? "計測時間を大きく表示します" : "現在時刻を大きく表示します");
   }
 
   function resolveTheme(theme) {
@@ -956,6 +1020,10 @@
     if (backup.storage[THEME_KEY] !== null &&
         !["system", "light", "dark"].includes(backup.storage[THEME_KEY])) {
       throw new Error("バックアップ内のテーマ設定が正しくありません。");
+    }
+    if (backup.storage[PRIMARY_TIME_DISPLAY_KEY] !== null &&
+        !["measurement", "clock"].includes(backup.storage[PRIMARY_TIME_DISPLAY_KEY])) {
+      throw new Error("バックアップ内の時間表示設定が正しくありません。");
     }
   }
 
@@ -1344,10 +1412,21 @@
     }
     updateDocumentTitle();
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
-    elements.timeDisplay.textContent = formatTime(
-      getDisplayMs(),
+    const measurementMs = getDisplayMs();
+    const measurementLabel = state.mode === MODES.STOPWATCH
+      ? "計測"
+      : isPomodoroActive()
+        ? state.pomodoroPhase === "work" ? "作業 残り" : "休憩 残り"
+        : "残り";
+    const measurementText = formatTime(
+      measurementMs,
       state.mode === MODES.COUNTDOWN ? "ceil" : "floor",
     );
+    const showClockAsPrimary = getPrimaryTimeDisplay() === "clock";
+    elements.timeDisplay.textContent = showClockAsPrimary ? currentClockText : measurementText;
+    elements.secondaryTimeDisplay.textContent = showClockAsPrimary
+      ? `${measurementLabel} ${measurementText}`
+      : `現在 ${currentClockText}`;
     elements.cumulativeTimeDisplay.hidden = state.mode !== MODES.COUNTDOWN;
     elements.timeMetaRow.hidden = false;
     elements.cumulativeTimeDisplay.textContent = `作業時間 ${formatTime(getElapsedMs())}`;
@@ -1393,6 +1472,10 @@
       : "リセット";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
     elements.panel.classList.toggle("is-awaiting-stop", isAwaitingCountdownStop());
+    elements.timeDisplay.classList.toggle("is-measurement-finished", !showClockAsPrimary && state.finishedAt > 0);
+    elements.timeDisplay.classList.toggle("is-measurement-awaiting-stop", !showClockAsPrimary && isAwaitingCountdownStop());
+    elements.secondaryTimeDisplay.classList.toggle("is-measurement-finished", showClockAsPrimary && state.finishedAt > 0);
+    elements.secondaryTimeDisplay.classList.toggle("is-measurement-awaiting-stop", showClockAsPrimary && isAwaitingCountdownStop());
     elements.panel.classList.toggle(
       "is-overtime-background",
       isAwaitingCountdownStop() && now() - state.finishedAt >= 5000,
@@ -2324,11 +2407,7 @@
       await openCompactWindow();
       return;
     }
-    if (!state.isMinimized) {
-      toggleMinimized();
-      return;
-    }
-    elements.app.ownerDocument.defaultView.close();
+    toggleMinimized();
   }
 
   function handleKeyboard(event) {
@@ -2472,6 +2551,35 @@
       applyTheme(theme);
       showToast("表示テーマを変更しました");
     });
+    elements.primaryTimeDisplaySelect.addEventListener("change", () => {
+      const value = elements.primaryTimeDisplaySelect.value;
+      if (!["measurement", "clock"].includes(value)) return;
+      localStorage.setItem(PRIMARY_TIME_DISPLAY_KEY, value);
+      render();
+      showToast(value === "measurement" ? "計測時間を大きく表示します" : "現在時刻を大きく表示します");
+    });
+    elements.timeDisplayArea.addEventListener("click", togglePrimaryTimeDisplay);
+    elements.timeDisplay.addEventListener("click", (event) => {
+      event.stopPropagation();
+      togglePrimaryTimeDisplay();
+    });
+    elements.timeDisplayArea.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      togglePrimaryTimeDisplay();
+    });
+    elements.secondaryTimeDisplay.addEventListener("click", togglePrimaryTimeDisplay);
+    elements.secondaryTimeDisplay.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      togglePrimaryTimeDisplay();
+    });
+    elements.cumulativeTimeDisplay.addEventListener("click", togglePrimaryTimeDisplay);
+    elements.cumulativeTimeDisplay.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      togglePrimaryTimeDisplay();
+    });
     elements.toastUndoButton.addEventListener("click", () => {
       const action = toastUndoAction;
       toastUndoAction = null;
@@ -2536,6 +2644,7 @@
     });
     elements.countdownDurationButton.addEventListener("click", () => {
       syncInputsFromDuration();
+      elements.untilTimeStatus.textContent = "指定時刻までの時間を自動計算します。";
       elements.countdownDurationDialog.showModal();
       window.setTimeout(() => elements.hoursInput.focus(), 0);
     });
@@ -2546,6 +2655,7 @@
       showToast("カウントダウン時間を変更しました");
     });
     elements.countdownDurationDialog.addEventListener("close", syncInputsFromDuration);
+    elements.applyUntilTimeButton.addEventListener("click", applyUntilTimeToInputs);
     elements.presetButtons.forEach((button) => button.addEventListener("click", () => {
       setCountdownDurationInputs(Number.parseInt(button.dataset.seconds, 10));
     }));

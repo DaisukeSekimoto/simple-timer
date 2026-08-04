@@ -48,16 +48,21 @@
           </button>
         </div>
 
-        <div id="time-display" class="time-display" aria-live="off">00:25:00</div>
+        <p id="secondary-time-display" class="secondary-time-display" role="button" tabindex="0" aria-label="大きく表示する時間を入れ替える">現在時間 00:00:00</p>
+        <div id="time-display-area" class="time-display-area" role="button" tabindex="0" aria-label="大きく表示する時間を入れ替える">
+          <div id="time-display" class="time-display" aria-live="off">00:25:00</div>
+        </div>
         <div id="time-meta-row" class="time-meta-row">
-          <p id="cumulative-time-display" class="cumulative-time-display">作業時間 00:00:00</p>
+          <p id="cumulative-time-display" class="cumulative-time-display" role="button" tabindex="0" aria-label="大きく表示する時間を入れ替える">作業時間 00:00:00</p>
           <p id="pomodoro-phase-display" class="pomodoro-phase-display" hidden>作業</p>
         </div>
         <div id="finish-flash" class="finish-flash" aria-hidden="true"></div>
 
         <form id="timer-form" class="timer-form">
           <div class="task-field">
-            <span>タスク名</span>
+            <div class="task-field-heading">
+              <span>タスク名</span>
+            </div>
             <button id="task-button" class="task-select-button" type="button">
               <span id="task-name-display">タスク名を入力</span>
               <span aria-hidden="true">編集</span>
@@ -159,6 +164,14 @@
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <fieldset class="countdown-settings">
+          <section class="until-time-section" aria-labelledby="until-time-title">
+            <h3 id="until-time-title">何時まで</h3>
+            <div class="until-time-controls">
+              <input id="until-time-input" type="time" step="60" aria-label="終了時刻">
+              <button id="apply-until-time-button" class="secondary-button" type="button">残り時間へ反映</button>
+            </div>
+            <p id="until-time-status" class="settings-description" aria-live="polite">指定時刻までの時間を自動計算します。</p>
+          </section>
           <div class="time-inputs">
             <label>
               <span>時</span>
@@ -218,6 +231,13 @@
             <select id="default-mode-select">
               <option value="countdown">カウントダウン</option>
               <option value="stopwatch">ストップウォッチ</option>
+            </select>
+          </label>
+          <h3 id="primary-time-display-title">大きく表示する時間</h3>
+          <label class="dialog-field">
+            <select id="primary-time-display-select" aria-labelledby="primary-time-display-title">
+              <option value="measurement">計測時間</option>
+              <option value="clock">現在時間</option>
             </select>
           </label>
           <h3 id="theme-settings-title">表示テーマ</h3>
@@ -300,7 +320,7 @@
                 </tr>
                 <tr>
                   <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>S</kbd></th>
-                  <td>標準表示→通常PiP→最小PiP→標準表示</td>
+                  <td>標準表示→通常PiP／PiP内では通常・最小を切り替え</td>
                 </tr>
                 <tr>
                   <th scope="row"><kbd>Space</kbd></th>
