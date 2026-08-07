@@ -123,11 +123,13 @@
     addHistoryDialog: document.querySelector("#add-history-dialog"),
     addHistoryForm: document.querySelector("#add-history-form"),
     manualDate: document.querySelector("#manual-date"),
-    manualTaskInput: document.querySelector("#manual-task-input"),
-    manualMemoInput: document.querySelector("#manual-memo-input"),
+    manualStartTimeInput: document.querySelector("#manual-start-time-input"),
+    manualEndTimeInput: document.querySelector("#manual-end-time-input"),
     manualHoursInput: document.querySelector("#manual-hours-input"),
     manualMinutesInput: document.querySelector("#manual-minutes-input"),
     manualSecondsInput: document.querySelector("#manual-seconds-input"),
+    manualTaskInput: document.querySelector("#manual-task-input"),
+    manualMemoInput: document.querySelector("#manual-memo-input"),
     manualHistoryError: document.querySelector("#manual-history-error"),
     editHistoryDialog: document.querySelector("#edit-history-dialog"),
     editHistoryForm: document.querySelector("#edit-history-form"),
@@ -717,7 +719,7 @@
     const addedAt = new Date(record.createdAt);
     if (Number.isNaN(addedAt.getTime())) return "";
     const storedStartedAt = new Date(record.firstStartedAt);
-    return record.mode === "manual" || Number.isNaN(storedStartedAt.getTime())
+    return Number.isNaN(storedStartedAt.getTime())
       ? `～${formatHistoryClock(addedAt)}`
       : `${formatHistoryClock(storedStartedAt)}～${formatHistoryClock(addedAt)}`;
   }
@@ -2155,6 +2157,8 @@
     elements.manualHoursInput.value = "0";
     elements.manualMinutesInput.value = "0";
     elements.manualSecondsInput.value = "0";
+    elements.manualStartTimeInput.value = "";
+    elements.manualEndTimeInput.value = "";
     elements.manualHistoryError.textContent = "";
     renderRecentTasks(elements.manualRecentTaskList, elements.manualTaskInput);
     elements.addHistoryDialog.showModal();
@@ -2190,13 +2194,6 @@
     return totalSeconds * 1000;
   }
 
-  function normalizeManualDurationInputs() {
-    return normalizeDurationInputs(
-      [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput],
-      elements.manualHistoryError,
-    );
-  }
-
   function normalizeEditDurationInputs() {
     return normalizeDurationInputs(
       [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput],
@@ -2204,33 +2201,66 @@
     );
   }
 
+  function normalizeManualDurationInputs() {
+    return normalizeDurationInputs(
+      [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput],
+      elements.manualHistoryError,
+    );
+  }
+
   function addManualHistory(event) {
     event.preventDefault();
     const taskName = resolveTaskName(elements.manualTaskInput.value);
-    const durationMs = normalizeManualDurationInputs();
+    const recordDate = localDateKey();
+    const startTime = elements.manualStartTimeInput.value;
+    const endTime = elements.manualEndTimeInput.value;
+    if ((startTime && !endTime) || (!startTime && endTime)) {
+      elements.manualHistoryError.textContent = "時刻を指定する場合は開始と終了の両方を入力してください";
+      return;
+    }
+    let durationMs;
+    let startDate;
+    let addedAt;
+    if (startTime && endTime) {
+      startDate = new Date(`${recordDate}T${startTime}`);
+      const endDate = new Date(`${recordDate}T${endTime}`);
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        elements.manualHistoryError.textContent = "開始時刻と終了時刻を正しく入力してください";
+        return;
+      }
+      durationMs = endDate.getTime() - startDate.getTime();
+      if (durationMs < 1000) {
+        elements.manualHistoryError.textContent = "終了時刻は開始時刻より後にしてください";
+        return;
+      }
+      addedAt = endDate.getTime();
+    } else {
+      durationMs = normalizeManualDurationInputs();
+      if (durationMs === null) return;
+      if (durationMs < 1000) {
+        elements.manualHistoryError.textContent = "作業時間を1秒以上入力してください";
+        return;
+      }
+      addedAt = now();
+    }
 
-    if (durationMs === null) return;
     if (!taskName) {
       elements.manualHistoryError.textContent = "タスク名を入力してください";
       return;
     }
-    if (durationMs < 1000) {
-      elements.manualHistoryError.textContent = "作業時間を1秒以上入力してください";
-      return;
-    }
-
-    const addedAt = now();
-    state.records.push({
+    const record = {
       id: `${addedAt}-${Math.random().toString(16).slice(2)}`,
-      date: localDateKey(),
+      date: recordDate,
       taskName,
       memo: elements.manualMemoInput.value.trim().slice(0, 300),
       durationMs,
       mode: "manual",
       createdAt: new Date(addedAt).toISOString(),
-    });
+    };
+    if (startDate) record.firstStartedAt = startDate.toISOString();
+    state.records.push(record);
     saveRecords();
-    renderHistoryDateOptions(localDateKey());
+    renderHistoryDateOptions(recordDate);
     renderHistory();
     elements.addHistoryDialog.close();
     elements.statusText.textContent = "作業履歴を追加しました";

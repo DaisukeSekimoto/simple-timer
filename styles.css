@@ -536,6 +536,13 @@ h1 {
   font-weight: 700;
 }
 
+.manual-time-range-inputs {
+  width: min(100%, 320px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-self: center;
+  margin-inline: auto;
+}
+
 .countdown-settings {
   display: grid;
   gap: 10px;
