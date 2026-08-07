@@ -536,11 +536,21 @@ h1 {
   font-weight: 700;
 }
 
-.manual-time-range-inputs {
-  width: min(100%, 320px);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.time-inputs.manual-time-range-inputs {
+  width: min(100%, 380px);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
   justify-self: center;
   margin-inline: auto;
+}
+
+.manual-time-range-separator {
+  align-self: end;
+  padding-bottom: 10px;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .countdown-settings {

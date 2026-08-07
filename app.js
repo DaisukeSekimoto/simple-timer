@@ -2151,14 +2151,21 @@
   }
 
   function openAddHistoryDialog() {
+    const defaultEndDate = new Date(now());
+    defaultEndDate.setMinutes(Math.floor(defaultEndDate.getMinutes() / 30) * 30, 0, 0);
+    const defaultStartDate = new Date(defaultEndDate.getTime() - 60 * 60 * 1000);
+    const formatTimeInput = (date) => [date.getHours(), date.getMinutes(), date.getSeconds()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join(":");
     elements.manualDate.value = localDateKey();
     elements.manualTaskInput.value = "";
     elements.manualMemoInput.value = "";
     elements.manualHoursInput.value = "0";
     elements.manualMinutesInput.value = "0";
     elements.manualSecondsInput.value = "0";
-    elements.manualStartTimeInput.value = "";
-    elements.manualEndTimeInput.value = "";
+    elements.manualStartTimeInput.value = formatTimeInput(defaultStartDate);
+    elements.manualEndTimeInput.value = formatTimeInput(defaultEndDate);
+    syncManualDurationFromTimeRange();
     elements.manualHistoryError.textContent = "";
     renderRecentTasks(elements.manualRecentTaskList, elements.manualTaskInput);
     elements.addHistoryDialog.showModal();
@@ -2208,6 +2215,22 @@
     );
   }
 
+  function syncManualDurationFromTimeRange() {
+    const startTime = elements.manualStartTimeInput.value;
+    const endTime = elements.manualEndTimeInput.value;
+    if (!startTime || !endTime) return;
+    const recordDate = localDateKey();
+    const startDate = new Date(`${recordDate}T${startTime}`);
+    const endDate = new Date(`${recordDate}T${endTime}`);
+    if (startDate.getTime() > endDate.getTime()) startDate.setDate(startDate.getDate() - 1);
+    const totalSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
+    if (!Number.isSafeInteger(totalSeconds) || totalSeconds <= 0) return;
+    elements.manualHoursInput.value = String(Math.floor(totalSeconds / 3600));
+    elements.manualMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
+    elements.manualSecondsInput.value = String(totalSeconds % 60);
+    elements.manualHistoryError.textContent = "";
+  }
+
   function addManualHistory(event) {
     event.preventDefault();
     const taskName = resolveTaskName(elements.manualTaskInput.value);
@@ -2228,6 +2251,7 @@
         elements.manualHistoryError.textContent = "開始時刻と終了時刻を正しく入力してください";
         return;
       }
+      if (startDate.getTime() > endDate.getTime()) startDate.setDate(startDate.getDate() - 1);
       durationMs = endDate.getTime() - startDate.getTime();
       if (durationMs < 1000) {
         elements.manualHistoryError.textContent = "終了時刻は開始時刻より後にしてください";
@@ -2713,6 +2737,8 @@
     elements.unitButtons.forEach((button) => button.addEventListener("click", () => { state.historyUnit = button.dataset.unit; renderHistory(); }));
     elements.addHistoryButton.addEventListener("click", openAddHistoryDialog);
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
+    [elements.manualStartTimeInput, elements.manualEndTimeInput]
+      .forEach((input) => input.addEventListener("input", syncManualDurationFromTimeRange));
     [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput]
       .forEach((input) => input.addEventListener("change", normalizeManualDurationInputs));
     [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput]
