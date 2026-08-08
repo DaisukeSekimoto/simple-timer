@@ -103,7 +103,11 @@
     taskDialog: document.querySelector("#task-dialog"),
     taskDialogForm: document.querySelector("#task-dialog-form"),
     recentTaskList: document.querySelector("#recent-task-list"),
-    manualRecentTaskList: document.querySelector("#manual-recent-task-list"),
+    editHistoryTaskButton: document.querySelector("#edit-history-task-button"),
+    editTaskDisplay: document.querySelector("#edit-task-display"),
+    editMemoDisplay: document.querySelector("#edit-memo-display"),
+    editStartTimeInput: document.querySelector("#edit-start-time-input"),
+    editEndTimeInput: document.querySelector("#edit-end-time-input"),
     historyDialog: document.querySelector("#history-dialog"),
     historyDate: document.querySelector("#history-date"),
     historyDateContext: document.querySelector("#history-date-context"),
@@ -130,6 +134,9 @@
     manualSecondsInput: document.querySelector("#manual-seconds-input"),
     manualTaskInput: document.querySelector("#manual-task-input"),
     manualMemoInput: document.querySelector("#manual-memo-input"),
+    manualHistoryTaskButton: document.querySelector("#manual-history-task-button"),
+    manualTaskDisplay: document.querySelector("#manual-task-display"),
+    manualMemoDisplay: document.querySelector("#manual-memo-display"),
     manualHistoryError: document.querySelector("#manual-history-error"),
     editHistoryDialog: document.querySelector("#edit-history-dialog"),
     editHistoryForm: document.querySelector("#edit-history-form"),
@@ -192,6 +199,8 @@
   let audioContext = null;
   let finishSoundIntervalId = 0;
   let pendingRecordAfterTaskInput = false;
+  let isEditingHistoryTask = false;
+  let isAddingManualHistoryTask = false;
   let fitButtonsFrame = 0;
   let pendingDeleteRecordId = "";
   let pendingDeleteRecord = null;
@@ -1816,12 +1825,46 @@
   }
 
   function openTaskDialog(recordAfterInput = false) {
+    isEditingHistoryTask = false;
+    isAddingManualHistoryTask = false;
     pendingRecordAfterTaskInput = recordAfterInput === true;
     elements.taskInput.value = state.taskName;
     elements.taskMemoInput.value = state.taskMemo;
     renderRecentTasks(elements.recentTaskList, elements.taskInput);
     elements.taskDialog.showModal();
     window.setTimeout(() => elements.taskInput.focus(), 0);
+  }
+
+  function openHistoryTaskDialog() {
+    isEditingHistoryTask = true;
+    isAddingManualHistoryTask = false;
+    pendingRecordAfterTaskInput = false;
+    elements.taskInput.value = elements.editTaskInput.value;
+    elements.taskMemoInput.value = elements.editMemoInput.value;
+    renderRecentTasks(elements.recentTaskList, elements.taskInput);
+    elements.taskDialog.showModal();
+    window.setTimeout(() => elements.taskInput.focus(), 0);
+  }
+
+  function renderEditHistoryTask() {
+    elements.editTaskDisplay.textContent = elements.editTaskInput.value || "タスク名を入力";
+    elements.editMemoDisplay.textContent = elements.editMemoInput.value || "メモなし";
+  }
+
+  function openManualHistoryTaskDialog() {
+    isEditingHistoryTask = false;
+    isAddingManualHistoryTask = true;
+    pendingRecordAfterTaskInput = false;
+    elements.taskInput.value = elements.manualTaskInput.value;
+    elements.taskMemoInput.value = elements.manualMemoInput.value;
+    renderRecentTasks(elements.recentTaskList, elements.taskInput);
+    elements.taskDialog.showModal();
+    window.setTimeout(() => elements.taskInput.focus(), 0);
+  }
+
+  function renderManualHistoryTask() {
+    elements.manualTaskDisplay.textContent = elements.manualTaskInput.value || "タスク名を入力";
+    elements.manualMemoDisplay.textContent = elements.manualMemoInput.value || "メモなし";
   }
 
   function setTask(name, memo = "") {
@@ -2011,21 +2054,55 @@
     elements.editHoursInput.value = String(Math.floor(totalSeconds / 3600));
     elements.editMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
     elements.editSecondsInput.value = String(totalSeconds % 60);
+    const startedAt = new Date(record.firstStartedAt);
+    const endedAt = new Date(record.createdAt);
+    const hasTimeRange = !Number.isNaN(startedAt.getTime()) && !Number.isNaN(endedAt.getTime());
+    const formatTimeInput = (date) => [date.getHours(), date.getMinutes(), date.getSeconds()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join(":");
+    elements.editStartTimeInput.value = hasTimeRange ? formatTimeInput(startedAt) : "";
+    elements.editEndTimeInput.value = hasTimeRange ? formatTimeInput(endedAt) : "";
+    elements.editStartTimeInput.disabled = !hasTimeRange && totalSeconds > 0;
+    elements.editEndTimeInput.disabled = !hasTimeRange && totalSeconds > 0;
+    elements.editHoursInput.disabled = hasTimeRange;
+    elements.editMinutesInput.disabled = hasTimeRange;
+    elements.editSecondsInput.disabled = hasTimeRange;
     elements.editTaskInput.value = record.taskName;
     elements.editMemoInput.value = record.memo || "";
+    renderEditHistoryTask();
     elements.editHistoryError.textContent = "";
     elements.editHistoryDialog.showModal();
-    window.setTimeout(() => elements.editTaskInput.focus(), 0);
+    window.setTimeout(() => elements.editHistoryTaskButton.focus(), 0);
   }
 
   function updateHistoryRecord(event) {
     event.preventDefault();
     if (!editingRecord) return;
     const taskName = resolveTaskName(elements.editTaskInput.value);
-    const durationMs = normalizeDurationInputs(
-      [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput],
-      elements.editHistoryError,
-    );
+    const startTime = elements.editStartTimeInput.value;
+    const endTime = elements.editEndTimeInput.value;
+    if ((startTime && !endTime) || (!startTime && endTime)) {
+      elements.editHistoryError.textContent = "時刻を指定する場合は開始と終了の両方を入力してください";
+      return;
+    }
+    let durationMs;
+    let startedAt;
+    let endedAt;
+    if (startTime && endTime) {
+      startedAt = new Date(`${editingRecord.date}T${startTime}`);
+      endedAt = new Date(`${editingRecord.date}T${endTime}`);
+      if (Number.isNaN(startedAt.getTime()) || Number.isNaN(endedAt.getTime())) {
+        elements.editHistoryError.textContent = "開始時刻と終了時刻を正しく入力してください";
+        return;
+      }
+      if (startedAt.getTime() > endedAt.getTime()) startedAt.setDate(startedAt.getDate() - 1);
+      durationMs = endedAt.getTime() - startedAt.getTime();
+    } else {
+      durationMs = normalizeDurationInputs(
+        [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput],
+        elements.editHistoryError,
+      );
+    }
     if (durationMs === null) return;
     if (!taskName) {
       elements.editHistoryError.textContent = "タスク名を入力してください";
@@ -2041,6 +2118,12 @@
     editingRecord.memo = elements.editMemoInput.value.trim().slice(0, 300);
     editingRecord.updatedAt = new Date().toISOString();
     editingRecord.durationMs = durationMs;
+    if (startedAt && endedAt) {
+      editingRecord.firstStartedAt = startedAt.toISOString();
+      editingRecord.createdAt = endedAt.toISOString();
+    } else {
+      delete editingRecord.firstStartedAt;
+    }
     saveRecords();
     elements.editHistoryDialog.close();
     renderHistory();
@@ -2151,25 +2234,23 @@
   }
 
   function openAddHistoryDialog() {
-    const defaultEndDate = new Date(now());
-    defaultEndDate.setMinutes(Math.floor(defaultEndDate.getMinutes() / 30) * 30, 0, 0);
-    const defaultStartDate = new Date(defaultEndDate.getTime() - 60 * 60 * 1000);
-    const formatTimeInput = (date) => [date.getHours(), date.getMinutes(), date.getSeconds()]
-      .map((part) => String(part).padStart(2, "0"))
-      .join(":");
     elements.manualDate.value = localDateKey();
     elements.manualTaskInput.value = "";
     elements.manualMemoInput.value = "";
     elements.manualHoursInput.value = "0";
     elements.manualMinutesInput.value = "0";
     elements.manualSecondsInput.value = "0";
-    elements.manualStartTimeInput.value = formatTimeInput(defaultStartDate);
-    elements.manualEndTimeInput.value = formatTimeInput(defaultEndDate);
-    syncManualDurationFromTimeRange();
+    elements.manualStartTimeInput.value = "";
+    elements.manualEndTimeInput.value = "";
+    elements.manualStartTimeInput.disabled = false;
+    elements.manualEndTimeInput.disabled = false;
+    elements.manualHoursInput.disabled = false;
+    elements.manualMinutesInput.disabled = false;
+    elements.manualSecondsInput.disabled = false;
     elements.manualHistoryError.textContent = "";
-    renderRecentTasks(elements.manualRecentTaskList, elements.manualTaskInput);
+    renderManualHistoryTask();
     elements.addHistoryDialog.showModal();
-    window.setTimeout(() => elements.manualTaskInput.focus(), 0);
+    window.setTimeout(() => elements.manualHistoryTaskButton.focus(), 0);
   }
 
   function readDurationPart(input) {
@@ -2229,6 +2310,90 @@
     elements.manualMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
     elements.manualSecondsInput.value = String(totalSeconds % 60);
     elements.manualHistoryError.textContent = "";
+  }
+
+  function handleManualTimeRangeInput() {
+    const hasTimeRangeInput = Boolean(
+      elements.manualStartTimeInput.value || elements.manualEndTimeInput.value,
+    );
+    elements.manualHoursInput.disabled = hasTimeRangeInput;
+    elements.manualMinutesInput.disabled = hasTimeRangeInput;
+    elements.manualSecondsInput.disabled = hasTimeRangeInput;
+    if (!hasTimeRangeInput) {
+      elements.manualHoursInput.value = "0";
+      elements.manualMinutesInput.value = "0";
+      elements.manualSecondsInput.value = "0";
+      elements.manualHistoryError.textContent = "";
+      return;
+    }
+    syncManualDurationFromTimeRange();
+  }
+
+  function handleManualDurationInput() {
+    const hasDirectDuration = [
+      elements.manualHoursInput,
+      elements.manualMinutesInput,
+      elements.manualSecondsInput,
+    ].some((input) => {
+      const value = readDurationPart(input);
+      return value !== null && value > 0;
+    });
+    if (hasDirectDuration) {
+      elements.manualStartTimeInput.value = "";
+      elements.manualEndTimeInput.value = "";
+    }
+    elements.manualStartTimeInput.disabled = hasDirectDuration;
+    elements.manualEndTimeInput.disabled = hasDirectDuration;
+  }
+
+  function syncEditDurationFromTimeRange() {
+    if (!editingRecord) return;
+    const startTime = elements.editStartTimeInput.value;
+    const endTime = elements.editEndTimeInput.value;
+    if (!startTime || !endTime) return;
+    const startDate = new Date(`${editingRecord.date}T${startTime}`);
+    const endDate = new Date(`${editingRecord.date}T${endTime}`);
+    if (startDate.getTime() > endDate.getTime()) startDate.setDate(startDate.getDate() - 1);
+    const totalSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
+    if (!Number.isSafeInteger(totalSeconds) || totalSeconds <= 0) return;
+    elements.editHoursInput.value = String(Math.floor(totalSeconds / 3600));
+    elements.editMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
+    elements.editSecondsInput.value = String(totalSeconds % 60);
+    elements.editHistoryError.textContent = "";
+  }
+
+  function handleEditTimeRangeInput() {
+    const hasTimeRangeInput = Boolean(
+      elements.editStartTimeInput.value || elements.editEndTimeInput.value,
+    );
+    elements.editHoursInput.disabled = hasTimeRangeInput;
+    elements.editMinutesInput.disabled = hasTimeRangeInput;
+    elements.editSecondsInput.disabled = hasTimeRangeInput;
+    if (!hasTimeRangeInput) {
+      elements.editHoursInput.value = "0";
+      elements.editMinutesInput.value = "0";
+      elements.editSecondsInput.value = "0";
+      elements.editHistoryError.textContent = "";
+      return;
+    }
+    syncEditDurationFromTimeRange();
+  }
+
+  function handleEditDurationInput() {
+    const hasDirectDuration = [
+      elements.editHoursInput,
+      elements.editMinutesInput,
+      elements.editSecondsInput,
+    ].some((input) => {
+      const value = readDurationPart(input);
+      return value !== null && value > 0;
+    });
+    if (hasDirectDuration) {
+      elements.editStartTimeInput.value = "";
+      elements.editEndTimeInput.value = "";
+    }
+    elements.editStartTimeInput.disabled = hasDirectDuration;
+    elements.editEndTimeInput.disabled = hasDirectDuration;
   }
 
   function addManualHistory(event) {
@@ -2714,8 +2879,30 @@
       setCountdownDurationInputs(Number.parseInt(button.dataset.seconds, 10));
     }));
     elements.taskButton.addEventListener("click", () => openTaskDialog(false));
+    elements.editHistoryTaskButton.addEventListener("click", openHistoryTaskDialog);
+    elements.manualHistoryTaskButton.addEventListener("click", openManualHistoryTaskDialog);
     elements.taskDialogForm.addEventListener("submit", (event) => {
       event.preventDefault();
+      if (isEditingHistoryTask) {
+        const taskName = normalizeTaskName(elements.taskInput.value);
+        if (!taskName) return;
+        elements.editTaskInput.value = taskName;
+        elements.editMemoInput.value = elements.taskMemoInput.value.trim().slice(0, 300);
+        renderEditHistoryTask();
+        isEditingHistoryTask = false;
+        elements.taskDialog.close();
+        return;
+      }
+      if (isAddingManualHistoryTask) {
+        const taskName = normalizeTaskName(elements.taskInput.value);
+        if (!taskName) return;
+        elements.manualTaskInput.value = taskName;
+        elements.manualMemoInput.value = elements.taskMemoInput.value.trim().slice(0, 300);
+        renderManualHistoryTask();
+        isAddingManualHistoryTask = false;
+        elements.taskDialog.close();
+        return;
+      }
       setTask(elements.taskInput.value, elements.taskMemoInput.value);
       if (!state.taskName) return;
       const shouldRecord = pendingRecordAfterTaskInput;
@@ -2723,7 +2910,11 @@
       elements.taskDialog.close();
       if (shouldRecord) moveToNextTask();
     });
-    elements.taskDialog.addEventListener("close", () => { pendingRecordAfterTaskInput = false; });
+    elements.taskDialog.addEventListener("close", () => {
+      pendingRecordAfterTaskInput = false;
+      isEditingHistoryTask = false;
+      isAddingManualHistoryTask = false;
+    });
     elements.historyButton.addEventListener("click", openHistoryDialog);
     elements.historyDialog.addEventListener("cancel", (event) => {
       if (!canCloseHistoryWithMemo()) event.preventDefault();
@@ -2738,11 +2929,19 @@
     elements.addHistoryButton.addEventListener("click", openAddHistoryDialog);
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
     [elements.manualStartTimeInput, elements.manualEndTimeInput]
-      .forEach((input) => input.addEventListener("input", syncManualDurationFromTimeRange));
+      .forEach((input) => input.addEventListener("input", handleManualTimeRangeInput));
     [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput]
-      .forEach((input) => input.addEventListener("change", normalizeManualDurationInputs));
+      .forEach((input) => {
+        input.addEventListener("input", handleManualDurationInput);
+        input.addEventListener("change", normalizeManualDurationInputs);
+      });
     [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput]
-      .forEach((input) => input.addEventListener("change", normalizeEditDurationInputs));
+      .forEach((input) => {
+        input.addEventListener("input", handleEditDurationInput);
+        input.addEventListener("change", normalizeEditDurationInputs);
+      });
+    [elements.editStartTimeInput, elements.editEndTimeInput]
+      .forEach((input) => input.addEventListener("input", handleEditTimeRangeInput));
     elements.editHistoryForm.addEventListener("submit", updateHistoryRecord);
     elements.resumeHistoryButton.addEventListener("click", resumeFromHistory);
     elements.cancelResumeHistoryButton.addEventListener("click", () => elements.resumeHistoryConfirmDialog.close());

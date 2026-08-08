@@ -426,8 +426,22 @@
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <fieldset class="countdown-settings">
+          <legend>開始・終了時刻</legend>
+          <div class="time-inputs manual-time-range-inputs">
+            <label>
+              <span>開始</span>
+              <input id="edit-start-time-input" type="time" step="1">
+            </label>
+            <span class="manual-time-range-separator" aria-hidden="true">～</span>
+            <label>
+              <span>終了</span>
+              <input id="edit-end-time-input" type="time" step="1">
+            </label>
+          </div>
+        </fieldset>
+        <fieldset class="countdown-settings">
           <legend>作業時間</legend>
-          <div class="time-inputs">
+          <div class="time-inputs edit-duration-inputs">
             <label>
               <span>時</span>
               <input id="edit-hours-input" type="number" inputmode="numeric" min="0" step="1">
@@ -442,14 +456,16 @@
             </label>
           </div>
         </fieldset>
-        <label class="dialog-field">
-          <span>タスク名</span>
-          <input id="edit-task-input" type="text" autocomplete="off" maxlength="80" required>
-        </label>
-        <label class="dialog-field">
-          <span>メモ（任意）</span>
-          <textarea id="edit-memo-input" maxlength="300" rows="3"></textarea>
-        </label>
+        <button id="edit-history-task-button" class="task-select-button edit-history-task-button" type="button">
+          <span class="edit-history-task-content">
+            <span class="edit-history-task-label">タスク名・メモ</span>
+            <strong id="edit-task-display"></strong>
+            <small id="edit-memo-display"></small>
+          </span>
+          <span aria-hidden="true">編集</span>
+        </button>
+        <input id="edit-task-input" type="hidden">
+        <input id="edit-memo-input" type="hidden">
         <p id="edit-history-error" class="form-error" aria-live="polite"></p>
         <button id="resume-history-button" class="secondary-button resume-history-button" type="button">この履歴から計測を再開</button>
         <div class="edit-history-actions">
@@ -498,7 +514,7 @@
         </fieldset>
         <fieldset class="countdown-settings">
           <legend>作業時間</legend>
-          <div class="time-inputs">
+          <div class="time-inputs manual-duration-inputs">
             <label>
               <span>時</span>
               <input id="manual-hours-input" type="number" inputmode="numeric" min="0" step="1" value="0">
@@ -513,18 +529,16 @@
             </label>
           </div>
         </fieldset>
-        <label class="dialog-field">
-          <span>タスク名</span>
-          <input id="manual-task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
-        </label>
-        <label class="dialog-field">
-          <span>メモ（任意）</span>
-          <textarea id="manual-memo-input" maxlength="300" rows="3" placeholder="作業内容や補足"></textarea>
-        </label>
-        <div>
-          <h3>最近のタスク</h3>
-          <div id="manual-recent-task-list" class="recent-task-list"></div>
-        </div>
+        <button id="manual-history-task-button" class="task-select-button edit-history-task-button" type="button">
+          <span class="edit-history-task-content">
+            <span class="edit-history-task-label">タスク名・メモ</span>
+            <strong id="manual-task-display">タスク名を入力</strong>
+            <small id="manual-memo-display">メモなし</small>
+          </span>
+          <span aria-hidden="true">編集</span>
+        </button>
+        <input id="manual-task-input" type="hidden">
+        <input id="manual-memo-input" type="hidden">
         <p id="manual-history-error" class="form-error" aria-live="polite"></p>
         <button class="primary-button modal-submit" type="submit">履歴に追加</button>
       </form>
