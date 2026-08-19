@@ -441,7 +441,7 @@
         </fieldset>
         <fieldset class="countdown-settings">
           <legend>作業時間</legend>
-          <div class="time-inputs edit-duration-inputs">
+          <div class="time-inputs">
             <label>
               <span>時</span>
               <input id="edit-hours-input" type="number" inputmode="numeric" min="0" step="1">
@@ -456,16 +456,14 @@
             </label>
           </div>
         </fieldset>
-        <button id="edit-history-task-button" class="task-select-button edit-history-task-button" type="button">
-          <span class="edit-history-task-content">
-            <span class="edit-history-task-label">タスク名・メモ</span>
-            <strong id="edit-task-display"></strong>
-            <small id="edit-memo-display"></small>
-          </span>
-          <span aria-hidden="true">編集</span>
-        </button>
-        <input id="edit-task-input" type="hidden">
-        <input id="edit-memo-input" type="hidden">
+        <label class="dialog-field">
+          <span>タスク名</span>
+          <input id="edit-task-input" type="text" autocomplete="off" maxlength="80" required>
+        </label>
+        <label class="dialog-field">
+          <span>メモ（任意）</span>
+          <textarea id="edit-memo-input" maxlength="300" rows="3"></textarea>
+        </label>
         <p id="edit-history-error" class="form-error" aria-live="polite"></p>
         <button id="resume-history-button" class="secondary-button resume-history-button" type="button">この履歴から計測を再開</button>
         <div class="edit-history-actions">
@@ -510,11 +508,10 @@
               <input id="manual-end-time-input" type="time" step="1">
             </label>
           </div>
-          <p class="settings-description">入力した場合は、開始から終了までを作業時間として登録します。</p>
         </fieldset>
         <fieldset class="countdown-settings">
           <legend>作業時間</legend>
-          <div class="time-inputs manual-duration-inputs">
+          <div class="time-inputs">
             <label>
               <span>時</span>
               <input id="manual-hours-input" type="number" inputmode="numeric" min="0" step="1" value="0">
@@ -529,19 +526,34 @@
             </label>
           </div>
         </fieldset>
-        <button id="manual-history-task-button" class="task-select-button edit-history-task-button" type="button">
-          <span class="edit-history-task-content">
-            <span class="edit-history-task-label">タスク名・メモ</span>
-            <strong id="manual-task-display">タスク名を入力</strong>
-            <small id="manual-memo-display">メモなし</small>
-          </span>
-          <span aria-hidden="true">編集</span>
-        </button>
-        <input id="manual-task-input" type="hidden">
-        <input id="manual-memo-input" type="hidden">
+        <label class="dialog-field">
+          <span>タスク名</span>
+          <input id="manual-task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
+        </label>
+        <label class="dialog-field">
+          <span>メモ（任意）</span>
+          <textarea id="manual-memo-input" maxlength="300" rows="3" placeholder="作業内容や補足"></textarea>
+        </label>
+        <div>
+          <h3>最近のタスク</h3>
+          <div id="manual-recent-task-list" class="recent-task-list"></div>
+        </div>
         <p id="manual-history-error" class="form-error" aria-live="polite"></p>
         <button class="primary-button modal-submit" type="submit">履歴に追加</button>
       </form>
+    </dialog>
+
+    <dialog id="duration-conflict-dialog" class="modal">
+      <section class="modal-card confirm-card">
+        <h2>登録する作業時間を選んでください</h2>
+        <p id="duration-conflict-message" class="confirm-message"></p>
+        <p class="confirm-message">開始・終了時刻はどちらを選んでも入力した内容で保存されます。</p>
+        <div class="duration-conflict-actions">
+          <button id="cancel-duration-conflict-button" class="secondary-button" type="button">キャンセル</button>
+          <button id="use-entered-duration-button" class="secondary-button" type="button">入力した作業時間を使用</button>
+          <button id="use-time-range-duration-button" class="primary-button" type="button">開始・終了から計算</button>
+        </div>
+      </section>
     </dialog>
     </main>
 
