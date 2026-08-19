@@ -135,6 +135,8 @@
     editHistoryForm: document.querySelector("#edit-history-form"),
     editTaskInput: document.querySelector("#edit-task-input"),
     editMemoInput: document.querySelector("#edit-memo-input"),
+    editStartTimeInput: document.querySelector("#edit-start-time-input"),
+    editEndTimeInput: document.querySelector("#edit-end-time-input"),
     editHoursInput: document.querySelector("#edit-hours-input"),
     editMinutesInput: document.querySelector("#edit-minutes-input"),
     editSecondsInput: document.querySelector("#edit-seconds-input"),
@@ -159,6 +161,11 @@
     resumeHistoryConfirmMessage: document.querySelector("#resume-history-confirm-message"),
     cancelResumeHistoryButton: document.querySelector("#cancel-resume-history-button"),
     confirmResumeHistoryButton: document.querySelector("#confirm-resume-history-button"),
+    durationConflictDialog: document.querySelector("#duration-conflict-dialog"),
+    durationConflictMessage: document.querySelector("#duration-conflict-message"),
+    cancelDurationConflictButton: document.querySelector("#cancel-duration-conflict-button"),
+    useEnteredDurationButton: document.querySelector("#use-entered-duration-button"),
+    useTimeRangeDurationButton: document.querySelector("#use-time-range-duration-button"),
   };
 
   const state = {
@@ -196,6 +203,9 @@
   let pendingDeleteRecordId = "";
   let pendingDeleteRecord = null;
   let editingRecord = null;
+  let pendingDurationConflict = null;
+  let previousManualTimeRangeDurationMs = null;
+  let previousEditTimeRangeDurationMs = null;
   let confirmPreviousFocus = null;
   let timerTabsSignature = "";
   let pendingCloseTimerId = "";
@@ -2007,6 +2017,14 @@
   function openEditHistoryDialog(record) {
     editingRecord = record;
     elements.resumeHistoryButton.hidden = record.date !== localDateKey();
+    const startedAt = new Date(record.firstStartedAt);
+    const endedAt = new Date(record.createdAt);
+    const hasTimeRange = !Number.isNaN(startedAt.getTime()) && !Number.isNaN(endedAt.getTime());
+    elements.editStartTimeInput.value = hasTimeRange ? formatTimeInputValue(startedAt) : "";
+    elements.editEndTimeInput.value = hasTimeRange ? formatTimeInputValue(endedAt) : "";
+    previousEditTimeRangeDurationMs = hasTimeRange
+      ? calculateTimeRangeDuration(record.date, elements.editStartTimeInput.value, elements.editEndTimeInput.value)
+      : null;
     const totalSeconds = Math.round(record.durationMs / 1000);
     elements.editHoursInput.value = String(Math.floor(totalSeconds / 3600));
     elements.editMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
@@ -2031,27 +2049,43 @@
       elements.editHistoryError.textContent = "タスク名を入力してください";
       return;
     }
-    if (durationMs < 1000) {
+    const timeRange = parseHistoryTimeRange(
+      editingRecord.date,
+      elements.editStartTimeInput.value,
+      elements.editEndTimeInput.value,
+      elements.editHistoryError,
+    );
+    if (timeRange === null) return;
+    if (!timeRange && durationMs < 1000) {
       elements.editHistoryError.textContent = "作業時間を1秒以上入力してください";
       return;
     }
-    const previousRecord = JSON.parse(JSON.stringify(editingRecord));
-    const editedRecord = editingRecord;
-    editingRecord.taskName = taskName;
-    editingRecord.memo = elements.editMemoInput.value.trim().slice(0, 300);
-    editingRecord.updatedAt = new Date().toISOString();
-    editingRecord.durationMs = durationMs;
-    saveRecords();
-    elements.editHistoryDialog.close();
-    renderHistory();
-    showToast("作業履歴を変更しました", () => {
-      const index = state.records.indexOf(editedRecord);
-      if (index >= 0) state.records[index] = previousRecord;
+    const save = (selectedDurationMs) => {
+      const previousRecord = JSON.parse(JSON.stringify(editingRecord));
+      const editedRecord = editingRecord;
+      editingRecord.taskName = taskName;
+      editingRecord.memo = elements.editMemoInput.value.trim().slice(0, 300);
+      editingRecord.updatedAt = new Date().toISOString();
+      editingRecord.durationMs = selectedDurationMs;
+      if (timeRange) {
+        editingRecord.firstStartedAt = timeRange.startDate.toISOString();
+        editingRecord.createdAt = timeRange.endDate.toISOString();
+      } else {
+        delete editingRecord.firstStartedAt;
+      }
       saveRecords();
-      renderHistoryDateOptions(previousRecord.date);
-      if (elements.historyDialog.open) renderHistory();
-      showToast("作業履歴の変更を元に戻しました");
-    });
+      elements.editHistoryDialog.close();
+      renderHistory();
+      showToast("作業履歴を変更しました", () => {
+        const index = state.records.indexOf(editedRecord);
+        if (index >= 0) state.records[index] = previousRecord;
+        saveRecords();
+        renderHistoryDateOptions(previousRecord.date);
+        if (elements.historyDialog.open) renderHistory();
+        showToast("作業履歴の変更を元に戻しました");
+      });
+    };
+    resolveDurationConflict(durationMs, timeRange, save);
   }
 
   function resumeFromHistory() {
@@ -2154,18 +2188,15 @@
     const defaultEndDate = new Date(now());
     defaultEndDate.setMinutes(Math.floor(defaultEndDate.getMinutes() / 30) * 30, 0, 0);
     const defaultStartDate = new Date(defaultEndDate.getTime() - 60 * 60 * 1000);
-    const formatTimeInput = (date) => [date.getHours(), date.getMinutes(), date.getSeconds()]
-      .map((part) => String(part).padStart(2, "0"))
-      .join(":");
     elements.manualDate.value = localDateKey();
     elements.manualTaskInput.value = "";
     elements.manualMemoInput.value = "";
     elements.manualHoursInput.value = "0";
     elements.manualMinutesInput.value = "0";
     elements.manualSecondsInput.value = "0";
-    elements.manualStartTimeInput.value = formatTimeInput(defaultStartDate);
-    elements.manualEndTimeInput.value = formatTimeInput(defaultEndDate);
-    syncManualDurationFromTimeRange();
+    elements.manualStartTimeInput.value = formatTimeInputValue(defaultStartDate);
+    elements.manualEndTimeInput.value = formatTimeInputValue(defaultEndDate);
+    previousManualTimeRangeDurationMs = defaultEndDate.getTime() - defaultStartDate.getTime();
     elements.manualHistoryError.textContent = "";
     renderRecentTasks(elements.manualRecentTaskList, elements.manualTaskInput);
     elements.addHistoryDialog.showModal();
@@ -2215,79 +2246,140 @@
     );
   }
 
-  function syncManualDurationFromTimeRange() {
-    const startTime = elements.manualStartTimeInput.value;
-    const endTime = elements.manualEndTimeInput.value;
-    if (!startTime || !endTime) return;
-    const recordDate = localDateKey();
+  function setDurationInputValues(inputs, durationMs) {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    inputs[0].value = String(Math.floor(totalSeconds / 3600));
+    inputs[1].value = String(Math.floor((totalSeconds % 3600) / 60));
+    inputs[2].value = String(totalSeconds % 60);
+  }
+
+  function readDurationInputValues(inputs) {
+    const parts = inputs.map(readDurationPart);
+    if (parts.includes(null)) return null;
+    const totalSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return Number.isSafeInteger(totalSeconds) ? totalSeconds * 1000 : null;
+  }
+
+  function calculateTimeRangeDuration(recordDate, startTime, endTime) {
+    if (!startTime || !endTime) return null;
     const startDate = new Date(`${recordDate}T${startTime}`);
     const endDate = new Date(`${recordDate}T${endTime}`);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
     if (startDate.getTime() > endDate.getTime()) startDate.setDate(startDate.getDate() - 1);
-    const totalSeconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
-    if (!Number.isSafeInteger(totalSeconds) || totalSeconds <= 0) return;
-    elements.manualHoursInput.value = String(Math.floor(totalSeconds / 3600));
-    elements.manualMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
-    elements.manualSecondsInput.value = String(totalSeconds % 60);
-    elements.manualHistoryError.textContent = "";
+    const durationMs = endDate.getTime() - startDate.getTime();
+    return Number.isSafeInteger(durationMs) && durationMs >= 1000 ? durationMs : null;
+  }
+
+  function syncDurationAfterTimeRangeChange(kind) {
+    const isManual = kind === "manual";
+    const timeInputs = isManual
+      ? [elements.manualStartTimeInput, elements.manualEndTimeInput]
+      : [elements.editStartTimeInput, elements.editEndTimeInput];
+    const durationInputs = isManual
+      ? [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput]
+      : [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput];
+    const recordDate = isManual ? localDateKey() : editingRecord?.date;
+    const nextDurationMs = calculateTimeRangeDuration(recordDate, timeInputs[0].value, timeInputs[1].value);
+    if (nextDurationMs === null) return;
+    const enteredDurationMs = readDurationInputValues(durationInputs);
+    const previousDurationMs = isManual ? previousManualTimeRangeDurationMs : previousEditTimeRangeDurationMs;
+    if (enteredDurationMs === 0 || enteredDurationMs === previousDurationMs) {
+      setDurationInputValues(durationInputs, nextDurationMs);
+    }
+    if (isManual) previousManualTimeRangeDurationMs = nextDurationMs;
+    else previousEditTimeRangeDurationMs = nextDurationMs;
+  }
+
+  function formatTimeInputValue(date) {
+    return [date.getHours(), date.getMinutes(), date.getSeconds()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join(":");
+  }
+
+  function parseHistoryTimeRange(recordDate, startTime, endTime, errorElement) {
+    if (!startTime && !endTime) return false;
+    if (!startTime || !endTime) {
+      errorElement.textContent = "時刻を指定する場合は開始と終了の両方を入力してください";
+      return null;
+    }
+    const startDate = new Date(`${recordDate}T${startTime}`);
+    const endDate = new Date(`${recordDate}T${endTime}`);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      errorElement.textContent = "開始時刻と終了時刻を正しく入力してください";
+      return null;
+    }
+    if (startDate.getTime() > endDate.getTime()) startDate.setDate(startDate.getDate() - 1);
+    const durationMs = endDate.getTime() - startDate.getTime();
+    if (!Number.isSafeInteger(durationMs) || durationMs < 1000) {
+      errorElement.textContent = "終了時刻は開始時刻より後にしてください";
+      return null;
+    }
+    errorElement.textContent = "";
+    return { startDate, endDate, durationMs };
+  }
+
+  function resolveDurationConflict(enteredDurationMs, timeRange, save) {
+    if (!timeRange || enteredDurationMs < 1000 || enteredDurationMs === timeRange.durationMs) {
+      save(timeRange && enteredDurationMs < 1000 ? timeRange.durationMs : enteredDurationMs);
+      return;
+    }
+    pendingDurationConflict = { enteredDurationMs, timeRangeDurationMs: timeRange.durationMs, save };
+    elements.durationConflictMessage.textContent =
+      `入力した作業時間は ${formatTime(enteredDurationMs)}、開始・終了から計算した時間は ${formatTime(timeRange.durationMs)} です。`;
+    elements.durationConflictDialog.showModal();
+    window.setTimeout(() => elements.useTimeRangeDurationButton.focus(), 0);
+  }
+
+  function finishDurationConflict(useTimeRange) {
+    if (!pendingDurationConflict) return;
+    const resolution = pendingDurationConflict;
+    pendingDurationConflict = null;
+    elements.durationConflictDialog.close();
+    resolution.save(useTimeRange ? resolution.timeRangeDurationMs : resolution.enteredDurationMs);
   }
 
   function addManualHistory(event) {
     event.preventDefault();
     const taskName = resolveTaskName(elements.manualTaskInput.value);
     const recordDate = localDateKey();
-    const startTime = elements.manualStartTimeInput.value;
-    const endTime = elements.manualEndTimeInput.value;
-    if ((startTime && !endTime) || (!startTime && endTime)) {
-      elements.manualHistoryError.textContent = "時刻を指定する場合は開始と終了の両方を入力してください";
+    const timeRange = parseHistoryTimeRange(
+      recordDate,
+      elements.manualStartTimeInput.value,
+      elements.manualEndTimeInput.value,
+      elements.manualHistoryError,
+    );
+    if (timeRange === null) return;
+    const enteredDurationMs = normalizeManualDurationInputs();
+    if (enteredDurationMs === null) return;
+    if (!timeRange && enteredDurationMs < 1000) {
+      elements.manualHistoryError.textContent = "作業時間を1秒以上入力してください";
       return;
-    }
-    let durationMs;
-    let startDate;
-    let addedAt;
-    if (startTime && endTime) {
-      startDate = new Date(`${recordDate}T${startTime}`);
-      const endDate = new Date(`${recordDate}T${endTime}`);
-      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-        elements.manualHistoryError.textContent = "開始時刻と終了時刻を正しく入力してください";
-        return;
-      }
-      if (startDate.getTime() > endDate.getTime()) startDate.setDate(startDate.getDate() - 1);
-      durationMs = endDate.getTime() - startDate.getTime();
-      if (durationMs < 1000) {
-        elements.manualHistoryError.textContent = "終了時刻は開始時刻より後にしてください";
-        return;
-      }
-      addedAt = endDate.getTime();
-    } else {
-      durationMs = normalizeManualDurationInputs();
-      if (durationMs === null) return;
-      if (durationMs < 1000) {
-        elements.manualHistoryError.textContent = "作業時間を1秒以上入力してください";
-        return;
-      }
-      addedAt = now();
     }
 
     if (!taskName) {
       elements.manualHistoryError.textContent = "タスク名を入力してください";
       return;
     }
-    const record = {
-      id: `${addedAt}-${Math.random().toString(16).slice(2)}`,
-      date: recordDate,
-      taskName,
-      memo: elements.manualMemoInput.value.trim().slice(0, 300),
-      durationMs,
-      mode: "manual",
-      createdAt: new Date(addedAt).toISOString(),
+    const save = (durationMs) => {
+      const addedAt = timeRange ? timeRange.endDate.getTime() : now();
+      const record = {
+        id: `${addedAt}-${Math.random().toString(16).slice(2)}`,
+        date: recordDate,
+        taskName,
+        memo: elements.manualMemoInput.value.trim().slice(0, 300),
+        durationMs,
+        mode: "manual",
+        createdAt: new Date(addedAt).toISOString(),
+      };
+      if (timeRange) record.firstStartedAt = timeRange.startDate.toISOString();
+      state.records.push(record);
+      saveRecords();
+      renderHistoryDateOptions(recordDate);
+      renderHistory();
+      elements.addHistoryDialog.close();
+      elements.statusText.textContent = "作業履歴を追加しました";
     };
-    if (startDate) record.firstStartedAt = startDate.toISOString();
-    state.records.push(record);
-    saveRecords();
-    renderHistoryDateOptions(recordDate);
-    renderHistory();
-    elements.addHistoryDialog.close();
-    elements.statusText.textContent = "作業履歴を追加しました";
+    resolveDurationConflict(enteredDurationMs, timeRange, save);
   }
 
   function updateExportDurationFormatState() {
@@ -2738,7 +2830,9 @@
     elements.addHistoryButton.addEventListener("click", openAddHistoryDialog);
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
     [elements.manualStartTimeInput, elements.manualEndTimeInput]
-      .forEach((input) => input.addEventListener("input", syncManualDurationFromTimeRange));
+      .forEach((input) => input.addEventListener("input", () => syncDurationAfterTimeRangeChange("manual")));
+    [elements.editStartTimeInput, elements.editEndTimeInput]
+      .forEach((input) => input.addEventListener("input", () => syncDurationAfterTimeRangeChange("edit")));
     [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput]
       .forEach((input) => input.addEventListener("change", normalizeManualDurationInputs));
     [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput]
@@ -2747,6 +2841,10 @@
     elements.resumeHistoryButton.addEventListener("click", resumeFromHistory);
     elements.cancelResumeHistoryButton.addEventListener("click", () => elements.resumeHistoryConfirmDialog.close());
     elements.confirmResumeHistoryButton.addEventListener("click", confirmResumeFromHistory);
+    elements.cancelDurationConflictButton.addEventListener("click", () => elements.durationConflictDialog.close());
+    elements.useEnteredDurationButton.addEventListener("click", () => finishDurationConflict(false));
+    elements.useTimeRangeDurationButton.addEventListener("click", () => finishDurationConflict(true));
+    elements.durationConflictDialog.addEventListener("close", () => { pendingDurationConflict = null; });
     elements.editHistoryDialog.addEventListener("close", () => { editingRecord = null; });
     elements.editDeleteButton.addEventListener("click", () => {
       if (!editingRecord) return;

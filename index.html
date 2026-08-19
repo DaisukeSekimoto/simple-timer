@@ -426,6 +426,20 @@
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <fieldset class="countdown-settings">
+          <legend>開始・終了時刻</legend>
+          <div class="time-inputs manual-time-range-inputs">
+            <label>
+              <span>開始</span>
+              <input id="edit-start-time-input" type="time" step="1">
+            </label>
+            <span class="manual-time-range-separator" aria-hidden="true">～</span>
+            <label>
+              <span>終了</span>
+              <input id="edit-end-time-input" type="time" step="1">
+            </label>
+          </div>
+        </fieldset>
+        <fieldset class="countdown-settings">
           <legend>作業時間</legend>
           <div class="time-inputs">
             <label>
@@ -494,7 +508,6 @@
               <input id="manual-end-time-input" type="time" step="1">
             </label>
           </div>
-          <p class="settings-description">入力した場合は、開始から終了までを作業時間として登録します。</p>
         </fieldset>
         <fieldset class="countdown-settings">
           <legend>作業時間</legend>
@@ -528,6 +541,19 @@
         <p id="manual-history-error" class="form-error" aria-live="polite"></p>
         <button class="primary-button modal-submit" type="submit">履歴に追加</button>
       </form>
+    </dialog>
+
+    <dialog id="duration-conflict-dialog" class="modal">
+      <section class="modal-card confirm-card">
+        <h2>登録する作業時間を選んでください</h2>
+        <p id="duration-conflict-message" class="confirm-message"></p>
+        <p class="confirm-message">開始・終了時刻はどちらを選んでも入力した内容で保存されます。</p>
+        <div class="duration-conflict-actions">
+          <button id="cancel-duration-conflict-button" class="secondary-button" type="button">キャンセル</button>
+          <button id="use-entered-duration-button" class="secondary-button" type="button">入力した作業時間を使用</button>
+          <button id="use-time-range-duration-button" class="primary-button" type="button">開始・終了から計算</button>
+        </div>
+      </section>
     </dialog>
     </main>
 

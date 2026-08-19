@@ -1301,6 +1301,11 @@ kbd {
   gap: 8px;
 }
 
+.duration-conflict-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .form-error {
   min-height: 20px;
   margin: -8px 0 0;
