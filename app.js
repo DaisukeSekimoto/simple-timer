@@ -34,6 +34,7 @@
     app: document.querySelector(".app"),
     appTitle: document.querySelector("#app-title"),
     panel: document.querySelector(".timer-panel"),
+    historyResumeIndicator: document.querySelector("#history-resume-indicator"),
     statusText: document.querySelector("#status-text"),
     recordDate: document.querySelector("#record-date"),
     timeDisplayArea: document.querySelector("#time-display-area"),
@@ -182,6 +183,7 @@
     taskName: "",
     taskMemo: "",
     firstStartedAt: 0,
+    resumedRecordId: "",
     finishedAt: 0,
     hasStarted: false,
     isMinimized: false,
@@ -206,6 +208,7 @@
   let pendingDurationConflict = null;
   let previousManualTimeRangeDurationMs = null;
   let previousEditTimeRangeDurationMs = null;
+  let editTimingSnapshot = null;
   let confirmPreviousFocus = null;
   let timerTabsSignature = "";
   let pendingCloseTimerId = "";
@@ -378,6 +381,7 @@
       taskName: "",
       taskMemo: "",
       firstStartedAt: 0,
+      resumedRecordId: "",
       finishedAt: 0,
       hasStarted: false,
     };
@@ -413,6 +417,7 @@
     tab.taskName = state.taskName;
     tab.taskMemo = state.taskMemo;
     tab.firstStartedAt = state.firstStartedAt;
+    tab.resumedRecordId = state.resumedRecordId;
     tab.finishedAt = state.finishedAt;
     tab.hasStarted = state.hasStarted;
   }
@@ -442,6 +447,7 @@
     state.taskName = tab.taskName;
     state.taskMemo = typeof tab.taskMemo === "string" ? tab.taskMemo : "";
     state.firstStartedAt = Number.isFinite(tab.firstStartedAt) ? tab.firstStartedAt : 0;
+    state.resumedRecordId = typeof tab.resumedRecordId === "string" ? tab.resumedRecordId : "";
     state.finishedAt = tab.finishedAt || 0;
     state.hasStarted = tab.hasStarted === true;
   }
@@ -461,6 +467,7 @@
             ? tab.pomodoroWorkDurationMs
             : tab.countdownDurationMs,
           taskName: tab.taskName.slice(0, 80),
+          resumedRecordId: typeof tab.resumedRecordId === "string" ? tab.resumedRecordId : "",
           isRunning: false,
           startedAt: 0,
           countdownSessionStartElapsedMs: Number.isFinite(tab.countdownSessionStartElapsedMs)
@@ -1131,7 +1138,7 @@
     snapshotActiveTimer();
     const signature = JSON.stringify([
       state.activeTimerId,
-      state.timerTabs.map((tab) => [tab.id, tab.taskName, tab.number]),
+      state.timerTabs.map((tab) => [tab.id, tab.taskName, tab.number, tab.resumedRecordId]),
     ]);
     if (signature === timerTabsSignature) return;
     timerTabsSignature = signature;
@@ -1140,6 +1147,7 @@
       const item = document.createElement("div");
       item.className = "timer-workspace-tab";
       item.classList.toggle("is-active", tab.id === state.activeTimerId);
+      item.classList.toggle("is-history-resumed", Boolean(tab.resumedRecordId));
 
       const selectButton = document.createElement("button");
       selectButton.type = "button";
@@ -1258,6 +1266,25 @@
     return tab.id === state.activeTimerId
       ? state.hasStarted || state.isRunning
       : tab.hasStarted === true || tab.isRunning === true;
+  }
+
+  function removeRecordedTimerTab(timerId) {
+    const tabIndex = state.timerTabs.findIndex((tab) => tab.id === timerId);
+    if (tabIndex < 0) return;
+    stopCountdownAlert();
+    stopTicking();
+    state.timerTabs.splice(tabIndex, 1);
+    if (!state.timerTabs.length) {
+      const freshTab = createTimerTab(state.nextTimerNumber);
+      state.nextTimerNumber += 1;
+      state.timerTabs.push(freshTab);
+    }
+    const nextTab = state.timerTabs[Math.min(tabIndex, state.timerTabs.length - 1)];
+    applyTimerTab(nextTab);
+    syncInputsFromDuration();
+    timerTabsSignature = "";
+    saveState();
+    render();
   }
 
   function removeTimerTab(timerId) {
@@ -1483,6 +1510,8 @@
       ? "休憩終了"
       : "リセット";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
+    elements.panel.classList.toggle("is-history-resumed", Boolean(state.resumedRecordId));
+    elements.historyResumeIndicator.hidden = !state.resumedRecordId;
     elements.panel.classList.toggle("is-awaiting-stop", isAwaitingCountdownStop());
     elements.timeDisplay.classList.toggle("is-measurement-finished", !showClockAsPrimary && state.finishedAt > 0);
     elements.timeDisplay.classList.toggle("is-measurement-awaiting-stop", !showClockAsPrimary && isAwaitingCountdownStop());
@@ -1605,6 +1634,7 @@
     state.taskName = "";
     state.taskMemo = "";
     state.firstStartedAt = 0;
+    state.resumedRecordId = "";
     state.pomodoroPhase = "work";
     state.pomodoroPhaseElapsedBeforeStartMs = 0;
     stopTicking();
@@ -1866,8 +1896,13 @@
       return;
     }
     const addedAt = now();
-    state.records.push({
-      id: `${addedAt}-${Math.random().toString(16).slice(2)}`,
+    const resumedRecordId = state.resumedRecordId;
+    const isResumedHistory = Boolean(resumedRecordId);
+    const resumedRecordIndex = resumedRecordId
+      ? state.records.findIndex((record) => record.id === resumedRecordId)
+      : -1;
+    const nextRecord = {
+      id: resumedRecordId || String(addedAt) + "-" + Math.random().toString(16).slice(2),
       date: localDateKey(),
       taskName: state.taskName.trim(),
       memo: state.taskMemo,
@@ -1875,8 +1910,22 @@
       mode: state.mode,
       firstStartedAt: new Date(state.firstStartedAt || addedAt - durationMs).toISOString(),
       createdAt: new Date(addedAt).toISOString(),
-    });
+    };
+    if (resumedRecordIndex >= 0) {
+      state.records[resumedRecordIndex] = {
+        ...state.records[resumedRecordIndex],
+        ...nextRecord,
+      };
+    } else {
+      state.records.push(nextRecord);
+    }
     saveRecords();
+    if (isResumedHistory) {
+      removeRecordedTimerTab(state.activeTimerId);
+      elements.statusText.textContent = "再開元の作業履歴を更新しました";
+      showToast("再開元の作業履歴を更新しました");
+      return;
+    }
     resetTimer();
     state.taskName = "";
     state.taskMemo = "";
@@ -1884,6 +1933,20 @@
     render();
     elements.statusText.textContent = "今日の作業として記録しました";
     showToast("作業履歴に追加しました");
+  }
+
+  function getResumedRecordIds() {
+    const resumedIds = new Set(
+      state.timerTabs
+        .map((tab) => tab.resumedRecordId)
+        .filter((recordId) => typeof recordId === "string" && recordId),
+    );
+    if (state.resumedRecordId) resumedIds.add(state.resumedRecordId);
+    return resumedIds;
+  }
+
+  function isRecordBeingResumed(record) {
+    return Boolean(record && record.id && getResumedRecordIds().has(record.id));
   }
 
   function renderHistory() {
@@ -1919,6 +1982,8 @@
       const item = document.createElement("button");
       item.type = "button";
       item.className = "history-item";
+      const isResuming = isRecordBeingResumed(record);
+      item.classList.toggle("is-resuming", isResuming);
       const details = document.createElement("span");
       details.className = "history-item-details";
       const task = document.createElement("strong");
@@ -1929,6 +1994,12 @@
       const timeRange = formatHistoryTimeRange(record);
       metadata.textContent = [timeRange, record.memo || ""].filter(Boolean).join(" ／ ");
       details.append(task);
+      if (isResuming) {
+        const resumingLabel = document.createElement("small");
+        resumingLabel.className = "history-resuming-label";
+        resumingLabel.textContent = "計測再開中（履歴追加時に更新）";
+        details.append(resumingLabel);
+      }
       if (metadata.textContent) details.append(metadata);
       duration.textContent = formatRecordDuration(record.durationMs);
       item.append(details, duration);
@@ -2016,7 +2087,9 @@
 
   function openEditHistoryDialog(record) {
     editingRecord = record;
-    elements.resumeHistoryButton.hidden = record.date !== localDateKey();
+    const isResuming = isRecordBeingResumed(record);
+    elements.resumeHistoryButton.hidden = record.date !== localDateKey() || isResuming;
+    elements.editDeleteButton.hidden = isResuming;
     const startedAt = new Date(record.firstStartedAt);
     const endedAt = new Date(record.createdAt);
     const hasTimeRange = !Number.isNaN(startedAt.getTime()) && !Number.isNaN(endedAt.getTime());
@@ -2029,6 +2102,11 @@
     elements.editHoursInput.value = String(Math.floor(totalSeconds / 3600));
     elements.editMinutesInput.value = String(Math.floor((totalSeconds % 3600) / 60));
     elements.editSecondsInput.value = String(totalSeconds % 60);
+    editTimingSnapshot = {
+      startTime: elements.editStartTimeInput.value,
+      endTime: elements.editEndTimeInput.value,
+      durationMs: totalSeconds * 1000,
+    };
     elements.editTaskInput.value = record.taskName;
     elements.editMemoInput.value = record.memo || "";
     elements.editHistoryError.textContent = "";
@@ -2060,18 +2138,24 @@
       elements.editHistoryError.textContent = "作業時間を1秒以上入力してください";
       return;
     }
+    const timingChanged = !editTimingSnapshot ||
+      elements.editStartTimeInput.value !== editTimingSnapshot.startTime ||
+      elements.editEndTimeInput.value !== editTimingSnapshot.endTime ||
+      durationMs !== editTimingSnapshot.durationMs;
     const save = (selectedDurationMs) => {
       const previousRecord = JSON.parse(JSON.stringify(editingRecord));
       const editedRecord = editingRecord;
       editingRecord.taskName = taskName;
       editingRecord.memo = elements.editMemoInput.value.trim().slice(0, 300);
       editingRecord.updatedAt = new Date().toISOString();
-      editingRecord.durationMs = selectedDurationMs;
-      if (timeRange) {
-        editingRecord.firstStartedAt = timeRange.startDate.toISOString();
-        editingRecord.createdAt = timeRange.endDate.toISOString();
-      } else {
-        delete editingRecord.firstStartedAt;
+      if (timingChanged) {
+        editingRecord.durationMs = selectedDurationMs;
+        if (timeRange) {
+          editingRecord.firstStartedAt = timeRange.startDate.toISOString();
+          editingRecord.createdAt = timeRange.endDate.toISOString();
+        } else {
+          delete editingRecord.firstStartedAt;
+        }
       }
       saveRecords();
       elements.editHistoryDialog.close();
@@ -2085,19 +2169,32 @@
         showToast("作業履歴の変更を元に戻しました");
       });
     };
-    resolveDurationConflict(durationMs, timeRange, save);
+    if (timingChanged) {
+      resolveDurationConflict(durationMs, timeRange, save);
+    } else {
+      save(editingRecord.durationMs);
+    }
   }
 
   function resumeFromHistory() {
     if (!editingRecord || editingRecord.date !== localDateKey()) return;
     elements.resumeHistoryConfirmMessage.textContent =
-      `「${editingRecord.taskName}（${formatRecordDuration(editingRecord.durationMs)}）」を履歴から削除して計測画面へ復元します。`;
+      `「${editingRecord.taskName}（${formatRecordDuration(editingRecord.durationMs)}）」の計測を再開します。履歴へ追加したときに履歴を更新します。`;
     elements.resumeHistoryConfirmDialog.showModal();
   }
 
   function confirmResumeFromHistory() {
     if (!editingRecord) return;
     const record = editingRecord;
+    if (isRecordBeingResumed(record)) {
+      elements.resumeHistoryConfirmDialog.close();
+      showToast("この履歴はすでに計測再開中です");
+      return;
+    }
+    if (!record.id) {
+      record.id = String(now()) + "-" + Math.random().toString(16).slice(2);
+      saveRecords();
+    }
     freezeRunningTimer();
     snapshotActiveTimer();
     const tab = createTimerTab(state.nextTimerNumber);
@@ -2111,14 +2208,14 @@
     tab.taskName = record.taskName.slice(0, 80);
     tab.taskMemo = typeof record.memo === "string" ? record.memo.slice(0, 300) : "";
     const recordStartedAt = new Date(record.firstStartedAt).getTime();
-    tab.firstStartedAt = record.mode !== "manual" && Number.isFinite(recordStartedAt) ? recordStartedAt : 0;
+    // 手動追加・編集された履歴も、保存済みの開始時刻を計測再開後まで維持する。
+    tab.firstStartedAt = Number.isFinite(recordStartedAt) ? recordStartedAt : 0;
     tab.elapsedBeforeStartMs = record.durationMs;
     tab.countdownSessionStartElapsedMs = record.durationMs;
     tab.hasStarted = true;
+    tab.resumedRecordId = record.id;
     state.timerTabs.push(tab);
     applyTimerTab(tab);
-    const recordIndex = state.records.findIndex((item) => item.id === record.id || item === record);
-    if (recordIndex >= 0) state.records.splice(recordIndex, 1);
     syncInputsFromDuration();
     timerTabsSignature = "";
     elements.resumeHistoryConfirmDialog.close();
@@ -2127,7 +2224,7 @@
     saveRecords();
     saveState();
     render();
-    showToast("履歴を計測画面へ戻しました。開始操作で再開できます");
+    showToast("開始操作で再開できます");
   }
 
   function deleteHistoryRecord(record) {
@@ -2845,7 +2942,10 @@
     elements.useEnteredDurationButton.addEventListener("click", () => finishDurationConflict(false));
     elements.useTimeRangeDurationButton.addEventListener("click", () => finishDurationConflict(true));
     elements.durationConflictDialog.addEventListener("close", () => { pendingDurationConflict = null; });
-    elements.editHistoryDialog.addEventListener("close", () => { editingRecord = null; });
+    elements.editHistoryDialog.addEventListener("close", () => {
+      editingRecord = null;
+      editTimingSnapshot = null;
+    });
     elements.editDeleteButton.addEventListener("click", () => {
       if (!editingRecord) return;
       const record = editingRecord;

@@ -1625,3 +1625,44 @@ kbd {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+
+/* 履歴から計測を再開しているタイマーと履歴を識別する */
+.timer-panel.is-history-resumed {
+  border: 2px solid var(--break-text);
+  box-shadow: 0 0 0 3px var(--break-bg), var(--shadow);
+}
+
+.history-resume-indicator {
+  padding: 7px 12px;
+  color: var(--break-text);
+  background: var(--break-bg);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.timer-workspace-tab.is-history-resumed {
+  border-color: var(--break-text);
+  box-shadow: inset 0 0 0 1px var(--break-text);
+}
+
+.history-item.is-resuming {
+  margin: 5px 0;
+  padding: 10px 8px;
+  border: 2px solid var(--break-text);
+  border-radius: 7px;
+  background: var(--break-bg);
+}
+
+.history-item.is-resuming:hover,
+.history-item.is-resuming:focus-visible {
+  padding: 10px 8px;
+  background: var(--break-bg);
+}
+
+.history-resuming-label {
+  color: var(--break-text);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
