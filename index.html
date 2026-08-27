@@ -277,9 +277,14 @@
           <h3 id="aggregation-settings-title">高度な計測</h3>
           <label class="settings-check-field">
             <input id="aggregation-enabled-input" type="checkbox">
-            <span>類似タスク名の統一確認とタスク別集計を使用する</span>
+            <span>類似タスク名の統一確認を使用する</span>
           </label>
-          <p class="settings-description settings-check-description">同一タスク名で1日あたりの作業時間を集計します。</p>
+          <p class="settings-description settings-check-description">入力したタスク名が既存名と似ている場合に統一するか確認します。</p>
+          <label class="settings-check-field">
+            <input id="past-history-edit-input" type="checkbox">
+            <span>過去の履歴編集を5分間許可する</span>
+          </label>
+          <p id="past-history-edit-status" class="settings-description settings-check-description">OFF（過去の履歴は参照のみ）</p>
 
         </section>
         <section class="settings-section" aria-labelledby="shortcut-settings-title">
@@ -353,7 +358,7 @@
         <div class="modal-header">
           <div class="history-title">
             <h2>作業履歴</h2>
-            <p class="history-help">各記録をクリックすると内容の変更・削除ができます。</p>
+            <p id="history-help" class="history-help">各記録をクリックすると内容の変更・削除ができます。</p>
           </div>
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
@@ -395,6 +400,70 @@
       </section>
     </dialog>
 
+    <dialog id="task-memo-dialog" class="modal">
+      <section class="modal-card task-memo-card">
+        <div class="modal-header">
+          <div>
+            <h2 id="task-memo-title">タスクのメモ</h2>
+            <p class="history-help">選択したタスクの記録とメモをまとめて表示します。</p>
+          </div>
+          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+        </div>
+        <div id="task-memo-list" class="task-memo-list"></div>
+      </section>
+    </dialog>
+
+    <dialog id="work-summary-dialog" class="modal">
+      <section class="modal-card work-summary-card">
+        <div class="modal-header work-summary-header">
+          <div>
+            <h2>勤務集計</h2>
+            <p id="work-summary-date" class="history-help"></p>
+          </div>
+          <div class="unit-toggle work-summary-unit-toggle" role="group" aria-label="勤務集計の時間表示形式">
+            <button class="work-summary-unit-button is-active" type="button" data-work-summary-unit="minutes">mm表記</button>
+            <button class="work-summary-unit-button" type="button" data-work-summary-unit="clock">hh:mm:ss表記</button>
+          </div>
+          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+        </div>
+        <div class="work-summary-input-grid">
+          <fieldset class="countdown-settings work-time-settings">
+            <legend>出退勤時間</legend>
+            <div class="time-inputs manual-time-range-inputs">
+              <label>
+                <span>出勤</span>
+                <input id="clock-in-input" type="time" step="60">
+              </label>
+              <span class="manual-time-range-separator" aria-hidden="true">～</span>
+              <label>
+                <span>退勤</span>
+                <input id="clock-out-input" type="time" step="60">
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="countdown-settings work-break-settings">
+            <legend>休憩時間</legend>
+            <div class="time-inputs work-break-inputs">
+              <label>
+                <span>休憩</span>
+                <input id="break-time-input" type="time" step="60" value="00:00">
+              </label>
+            </div>
+          </fieldset>
+        </div>
+        <p id="work-summary-edit-status" class="daily-memo-status"></p>
+        <dl class="work-summary-metrics">
+          <div><dt>勤務時間</dt><dd id="work-duration-value">--</dd></div>
+          <div><dt>計測時間</dt><dd id="measured-duration-value">0分</dd></div>
+          <div><dt>差分（勤務−計測）</dt><dd id="work-difference-value">--</dd></div>
+        </dl>
+        <section>
+          <h3 class="work-summary-subtitle">タスク別集計</h3>
+          <div id="work-summary-task-table"></div>
+        </section>
+      </section>
+    </dialog>
+
     <dialog id="export-history-dialog" class="modal">
       <form id="export-history-form" class="modal-card">
         <div class="modal-header">
@@ -423,7 +492,7 @@
     <dialog id="edit-history-dialog" class="modal">
       <form id="edit-history-form" class="modal-card">
         <div class="modal-header">
-          <h2>作業履歴を編集</h2>
+          <h2 id="edit-history-title">作業履歴を編集</h2>
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <fieldset class="countdown-settings">
@@ -469,7 +538,7 @@
         <button id="resume-history-button" class="secondary-button resume-history-button" type="button">この履歴から計測を再開</button>
         <div class="edit-history-actions">
           <button id="edit-delete-button" class="danger-button" type="button">削除</button>
-          <button class="primary-button" type="submit">変更を保存</button>
+          <button id="edit-history-submit-button" class="primary-button" type="submit">変更を保存</button>
         </div>
       </form>
     </dialog>
