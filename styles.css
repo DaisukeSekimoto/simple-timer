@@ -204,6 +204,31 @@ h1 {
   font-weight: 700;
 }
 
+.time-display-area {
+  display: grid;
+  cursor: pointer;
+}
+
+.time-display-area:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.secondary-time-display {
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 8px 16px -14px auto;
+  overflow: hidden;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .icon-button {
   display: inline-grid;
   width: 40px;
@@ -270,6 +295,11 @@ h1 {
 .timer-workspace-tab.is-active {
   border-color: var(--accent);
   background: var(--panel);
+}
+
+.timer-workspace-tab.is-running-background {
+  border-color: #6957c7;
+  animation: background-timer-attention 1.4s ease-in-out infinite;
 }
 
 .timer-tab-select,
@@ -392,14 +422,21 @@ h1 {
 }
 
 .cumulative-time-display {
-  grid-column: 2;
-  justify-self: end;
+  grid-column: 1 / -1;
+  justify-self: center;
   margin: 0;
   color: var(--muted);
+  cursor: pointer;
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   text-align: center;
+}
+
+.cumulative-time-display:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .cumulative-time-display[hidden] {
@@ -441,7 +478,25 @@ h1 {
   gap: 6px;
 }
 
-.task-field > span,
+.task-field-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-field-heading > span {
+  flex: none;
+}
+
+.secondary-time-display:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.task-field-heading > span,
 .time-inputs span,
 .countdown-settings legend {
   color: var(--muted);
@@ -484,6 +539,23 @@ h1 {
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.time-inputs.manual-time-range-inputs {
+  width: min(100%, 380px);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  justify-self: center;
+  margin-inline: auto;
+}
+
+.manual-time-range-separator {
+  align-self: end;
+  padding-bottom: 10px;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .countdown-settings {
@@ -536,6 +608,36 @@ h1 {
 .countdown-duration-button strong {
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+.until-time-section {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--subtle-soft);
+}
+
+.until-time-section h3 {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.until-time-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.until-time-controls input {
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+  font: inherit;
 }
 
 .time-inputs {
@@ -722,6 +824,12 @@ h1 {
   max-width: calc(100vw - 24px);
   overflow: hidden;
   resize: both;
+}
+
+#task-memo-dialog,
+#work-summary-dialog {
+  width: min(calc(100% - 24px), 620px);
+  max-width: calc(100vw - 24px);
 }
 
 #history-dialog .history-card {
@@ -984,7 +1092,8 @@ kbd {
   background: var(--subtle);
 }
 
-.unit-button {
+.unit-button,
+.work-summary-unit-button {
   padding: 0 10px;
   border: 0;
   border-radius: 5px;
@@ -994,7 +1103,8 @@ kbd {
   font-weight: 700;
 }
 
-.unit-button.is-active {
+.unit-button.is-active,
+.work-summary-unit-button.is-active {
   color: var(--text);
   background: var(--field);
 }
@@ -1005,13 +1115,51 @@ kbd {
   border-top: 1px solid var(--line);
 }
 
+.history-item.is-read-only {
+  opacity: 0.9;
+}
+
+#edit-history-dialog.is-read-only input,
+#edit-history-dialog.is-read-only textarea {
+  cursor: text;
+  color: var(--text);
+  background: var(--subtle-soft);
+}
+
+#edit-history-dialog.is-read-only .form-error {
+  color: var(--muted);
+}
+
+#edit-history-dialog.is-read-only .edit-history-actions {
+  display: none;
+}
+
 .history-summary {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 6px;
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--subtle-soft);
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.history-summary:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 14px rgba(23, 107, 87, 0.12);
+}
+
+.history-summary:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.history-summary:active {
+  transform: translateY(1px);
 }
 
 .history-summary[hidden] {
@@ -1023,11 +1171,331 @@ kbd {
   font-size: 0.82rem;
 }
 
-.history-summary-row {
+.history-summary-header {
   display: flex;
+  min-width: 0;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
+}
+
+.history-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.history-summary-stats div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--line);
+}
+
+.history-summary-stats dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.history-summary-stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .history-summary-stats div {
+    display: grid;
+    align-content: center;
+    gap: 3px;
+  }
+
+  .history-summary-stats dd {
+    text-align: right;
+  }
+}
+
+.work-summary-open-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--accent-strong);
+  background: var(--panel);
+  font-size: 0.75rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.work-summary-open-button svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.history-summary-table {
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
   font-size: 0.8rem;
+}
+
+.history-summary-table th,
+.history-summary-table td {
+  padding: 8px 7px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+
+.history-summary-table th:nth-child(n + 2),
+.history-summary-table td:nth-child(n + 2) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.history-summary-table th:first-child,
+.history-summary-table td:first-child {
+  width: 58%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.history-summary-table th:nth-child(2),
+.history-summary-table td:nth-child(2) {
+  width: 16%;
+}
+
+.history-summary-table th:nth-child(3),
+.history-summary-table td:nth-child(3) {
+  width: 26%;
+}
+
+.history-summary-table tbody tr {
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.history-summary-table tbody tr:hover,
+.history-summary-table tbody tr:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.task-memo-card,
+.work-summary-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.task-memo-card .modal-header > div,
+.work-summary-card .modal-header > div,
+#work-summary-task-table {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.task-memo-card .modal-header h2,
+.work-summary-card .modal-header h2 {
+  overflow-wrap: anywhere;
+}
+
+.task-memo-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(62vh, 520px);
+  overflow: auto;
+}
+
+.task-memo-item {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--subtle-soft);
+}
+
+.task-memo-item strong {
+  display: block;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.task-memo-item p {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.task-memo-item p.is-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.work-summary-card {
+  gap: 10px;
+}
+
+.work-summary-header > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.work-summary-unit-toggle {
+  min-height: 36px;
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+
+.work-summary-unit-button {
+  min-width: 0;
+  padding-inline: 7px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.work-summary-input-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.85fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.work-summary-input-grid fieldset {
+  height: 100%;
+  gap: 6px;
+  padding: 6px 9px 9px;
+}
+
+.work-summary-input-grid legend {
+  padding-inline: 4px;
+  font-size: 0.72rem;
+}
+
+.work-summary-input-grid .time-inputs input {
+  min-height: 34px;
+  padding: 4px 6px;
+  font-size: 0.9rem;
+}
+
+.work-summary-input-grid .time-inputs span {
+  font-size: 0.7rem;
+}
+
+.work-summary-input-grid .manual-time-range-separator {
+  padding-bottom: 8px;
+}
+
+.work-summary-input-grid .manual-time-range-inputs,
+.work-summary-input-grid .work-break-inputs {
+  width: 100%;
+}
+
+.work-time-settings .time-inputs label,
+.work-time-settings .time-inputs input,
+.work-break-settings .time-inputs label,
+.work-break-settings .time-inputs input {
+  min-width: 0;
+}
+
+.work-break-inputs {
+  width: min(100%, 260px);
+  grid-template-columns: minmax(0, 1fr);
+  justify-self: center;
+  margin-inline: auto;
+}
+
+.work-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.work-summary-metrics div {
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  text-align: center;
+  background: var(--subtle-soft);
+}
+
+.work-summary-metrics dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.work-summary-metrics dd {
+  margin: 5px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.work-summary-metrics dd.is-negative {
+  color: var(--danger);
+}
+
+.work-summary-metrics dd.is-positive {
+  color: var(--break-text);
+}
+
+.work-summary-card .daily-memo-status.is-error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.work-summary-subtitle {
+  margin: 0 0 7px;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 620px) {
+  .work-summary-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .work-summary-header {
+    gap: 6px;
+  }
+
+  .work-summary-header > div:first-child .history-help {
+    display: none;
+  }
+
+  .work-summary-unit-button {
+    padding-inline: 5px;
+    font-size: 0.65rem;
+  }
+
+  .work-summary-input-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .work-summary-card {
+    padding: 14px;
+  }
+
+  .work-summary-metrics {
+    grid-template-columns: 1fr;
+  }
 }
 
 .daily-memo-section {
@@ -1204,6 +1672,11 @@ kbd {
   gap: 8px;
 }
 
+.duration-conflict-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .form-error {
   min-height: 20px;
   margin: -8px 0 0;
@@ -1277,7 +1750,7 @@ kbd {
   background: #973629;
 }
 
-.is-finished .time-display {
+.is-measurement-finished {
   color: var(--danger);
 }
 
@@ -1298,7 +1771,7 @@ kbd {
   animation: countdown-border-attention 900ms ease-in-out infinite alternate;
 }
 
-.is-awaiting-stop .time-display {
+.is-measurement-awaiting-stop {
   color: var(--danger);
   animation: countdown-text-attention 900ms ease-in-out infinite alternate;
 }
@@ -1354,7 +1827,7 @@ kbd {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 10px 10px 0;
+  padding: 5px 6px;
 }
 
 .is-popup.is-minimized .timer-panel {
@@ -1363,7 +1836,7 @@ kbd {
 }
 
 .is-popup.is-minimized .app-header {
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .is-popup.is-minimized .mode-tabs,
@@ -1376,19 +1849,32 @@ kbd {
 }
 
 .is-popup.is-minimized .time-display {
-  padding: 8px 8px 0;
-  font-size: 3.4rem;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  padding: 3px 5px 0;
+  font-size: 3rem;
+}
+
+.is-popup.is-minimized .time-display-area {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  padding-bottom: 8px;
 }
 
 .is-popup.is-minimized .cumulative-time-display {
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
   line-height: 1;
   font-size: 0.74rem;
 }
 
 .is-popup.is-minimized .time-meta-row {
-  min-height: 18px;
-  margin: 0 0 1px;
-  padding: 0 4px;
+  min-height: 14px;
+  margin: -22px 0 0;
+  padding: 0 2px;
 }
 
 .is-popup.is-minimized .pomodoro-phase-display {
@@ -1399,6 +1885,13 @@ kbd {
 .is-popup.is-minimized .record-date {
   font-size: 0.72rem;
   white-space: nowrap;
+}
+
+.is-popup.is-minimized .secondary-time-display {
+  max-width: 100%;
+  margin: 1px 4px -1px auto;
+  font-size: 0.68rem;
+  text-align: right;
 }
 
 .is-popup.is-minimized .compact-start-pause-button {
@@ -1413,6 +1906,17 @@ kbd {
 
   100% {
     opacity: 0;
+  }
+}
+
+@keyframes background-timer-attention {
+  0%, 100% {
+    background: color-mix(in srgb, #6957c7 12%, var(--panel));
+    box-shadow: 0 0 0 0 rgba(105, 87, 199, 0.18);
+  }
+  50% {
+    background: color-mix(in srgb, #6957c7 30%, var(--panel));
+    box-shadow: 0 0 0 3px rgba(105, 87, 199, 0.16);
   }
 }
 
@@ -1458,7 +1962,7 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .is-awaiting-stop,
-  .is-awaiting-stop .time-display,
+  .is-measurement-awaiting-stop,
   .is-awaiting-stop .finish-flash {
     animation: none;
   }
@@ -1502,4 +2006,45 @@ kbd {
   .preset-row {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+
+/* 履歴から計測を再開しているタイマーと履歴を識別する */
+.timer-panel.is-history-resumed {
+  border: 2px solid var(--break-text);
+  box-shadow: 0 0 0 3px var(--break-bg), var(--shadow);
+}
+
+.history-resume-indicator {
+  padding: 7px 12px;
+  color: var(--break-text);
+  background: var(--break-bg);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.timer-workspace-tab.is-history-resumed {
+  border-color: var(--break-text);
+  box-shadow: inset 0 0 0 1px var(--break-text);
+}
+
+.history-item.is-resuming {
+  margin: 5px 0;
+  padding: 10px 8px;
+  border: 2px solid var(--break-text);
+  border-radius: 7px;
+  background: var(--break-bg);
+}
+
+.history-item.is-resuming:hover,
+.history-item.is-resuming:focus-visible {
+  padding: 10px 8px;
+  background: var(--break-bg);
+}
+
+.history-resuming-label {
+  color: var(--break-text);
+  font-size: 0.7rem;
+  font-weight: 800;
 }
