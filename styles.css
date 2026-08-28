@@ -302,6 +302,16 @@ h1 {
   animation: background-timer-attention 1.4s ease-in-out infinite;
 }
 
+.timer-workspace-tab.is-countdown-overtime {
+  border-color: var(--danger);
+  animation: countdown-tab-attention 900ms ease-in-out infinite alternate;
+}
+
+.timer-workspace-tab.is-countdown-overtime .timer-tab-select,
+.timer-workspace-tab.is-countdown-overtime.is-active .timer-tab-select {
+  color: var(--danger);
+}
+
 .timer-tab-select,
 .timer-tab-close,
 .add-timer-tab-button {
@@ -1776,6 +1786,12 @@ kbd {
   animation: countdown-text-attention 900ms ease-in-out infinite alternate;
 }
 
+#time-display.is-measurement-awaiting-stop {
+  width: 100%;
+  font-size: clamp(2.65rem, 14vw, 4.15rem);
+  text-align: center;
+}
+
 .is-awaiting-stop .finish-flash {
   animation: countdown-flash-attention 900ms ease-in-out infinite alternate;
 }
@@ -1799,6 +1815,10 @@ kbd {
 .is-popup .time-display {
   padding-top: 18px;
   font-size: 4.1rem;
+}
+
+.is-popup #time-display.is-measurement-awaiting-stop {
+  font-size: 3.6rem;
 }
 
 .is-popup .app-header {
@@ -1830,6 +1850,10 @@ kbd {
   padding: 5px 6px;
 }
 
+.is-popup.is-minimized.is-minimized-countdown-overtime .app {
+  animation: countdown-minimized-attention 900ms ease-in-out infinite alternate;
+}
+
 .is-popup.is-minimized .timer-panel {
   border-color: transparent;
   background: transparent;
@@ -1854,6 +1878,10 @@ kbd {
   pointer-events: auto;
   padding: 3px 5px 0;
   font-size: 3rem;
+}
+
+.is-popup.is-minimized #time-display.is-measurement-awaiting-stop {
+  font-size: 2.6rem;
 }
 
 .is-popup.is-minimized .time-display-area {
@@ -1940,6 +1968,18 @@ kbd {
   }
 }
 
+@keyframes countdown-tab-attention {
+  from {
+    background: color-mix(in srgb, var(--danger) 8%, var(--panel));
+    box-shadow: 0 0 0 0 rgba(184, 74, 60, 0.12);
+  }
+
+  to {
+    background: color-mix(in srgb, var(--danger) 22%, var(--panel));
+    box-shadow: 0 0 0 3px rgba(184, 74, 60, 0.36);
+  }
+}
+
 @keyframes countdown-flash-attention {
   from {
     opacity: 0.04;
@@ -1960,9 +2000,23 @@ kbd {
   }
 }
 
+@keyframes countdown-minimized-attention {
+  from {
+    background-color: var(--attention-bg);
+    box-shadow: inset 0 0 0 1px rgba(184, 74, 60, 0.3);
+  }
+
+  to {
+    background-color: var(--attention-bg-strong);
+    box-shadow: inset 0 0 18px 3px rgba(184, 74, 60, 0.48);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .is-awaiting-stop,
   .is-measurement-awaiting-stop,
+  .timer-workspace-tab.is-countdown-overtime,
+  .is-popup.is-minimized.is-minimized-countdown-overtime .app,
   .is-awaiting-stop .finish-flash {
     animation: none;
   }
@@ -1972,6 +2026,10 @@ kbd {
   }
 
   .is-awaiting-stop.is-overtime-background {
+    background: var(--attention-bg);
+  }
+
+  .is-popup.is-minimized.is-minimized-countdown-overtime .app {
     background: var(--attention-bg);
   }
 }

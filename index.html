@@ -241,6 +241,13 @@
               <option value="clock">現在時間</option>
             </select>
           </label>
+          <h3 id="default-time-format-title">履歴・集計のデフォルト時間表記</h3>
+          <label class="dialog-field">
+            <select id="default-time-format-select" aria-labelledby="default-time-format-title">
+              <option value="minutes">mm表記（ex: 65分）</option>
+              <option value="clock">hh:mm:ss表記（ex: 01:05:00）</option>
+            </select>
+          </label>
           <h3 id="theme-settings-title">表示テーマ</h3>
           <label class="dialog-field">
             <select id="theme-select">
@@ -431,12 +438,10 @@
             <legend>出退勤時間</legend>
             <div class="time-inputs manual-time-range-inputs">
               <label>
-                <span>出勤</span>
                 <input id="clock-in-input" type="time" step="60">
               </label>
               <span class="manual-time-range-separator" aria-hidden="true">～</span>
               <label>
-                <span>退勤</span>
                 <input id="clock-out-input" type="time" step="60">
               </label>
             </div>
@@ -445,7 +450,6 @@
             <legend>休憩時間</legend>
             <div class="time-inputs work-break-inputs">
               <label>
-                <span>休憩</span>
                 <input id="break-time-input" type="time" step="60" value="00:00">
               </label>
             </div>

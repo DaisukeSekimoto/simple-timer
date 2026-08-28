@@ -9,6 +9,7 @@
   const WORKDAY_TIMES_KEY = "simple-timer-workday-times";
   const THEME_KEY = "simple-timer-theme";
   const PRIMARY_TIME_DISPLAY_KEY = "simple-timer-primary-time-display";
+  const DEFAULT_TIME_FORMAT_KEY = "simple-timer-default-time-format";
   const BACKUP_FORMAT = "simple-timer-backup";
   const BACKUP_VERSION = 1;
   const BACKUP_STORAGE_KEYS = [
@@ -22,6 +23,7 @@
     WORKDAY_TIMES_KEY,
     THEME_KEY,
     PRIMARY_TIME_DISPLAY_KEY,
+    DEFAULT_TIME_FORMAT_KEY,
   ];
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
@@ -66,6 +68,7 @@
     pastHistoryEditStatus: document.querySelector("#past-history-edit-status"),
     themeSelect: document.querySelector("#theme-select"),
     primaryTimeDisplaySelect: document.querySelector("#primary-time-display-select"),
+    defaultTimeFormatSelect: document.querySelector("#default-time-format-select"),
     backupExportButton: document.querySelector("#backup-export-button"),
     backupImportButton: document.querySelector("#backup-import-button"),
     backupFileInput: document.querySelector("#backup-file-input"),
@@ -673,6 +676,13 @@
     return Math.max(0, state.countdownDurationMs - getCountdownSessionElapsedMs());
   }
 
+  function getCountdownOvertimeMs() {
+    if (isPomodoroActive()) {
+      return Math.max(0, getPomodoroPhaseElapsedMs() - getPomodoroPhaseDurationMs());
+    }
+    return Math.max(0, getCountdownSessionElapsedMs() - state.countdownDurationMs);
+  }
+
   function normalizeSeconds(value, fallback) {
     const parsed = Number.parseInt(value, 10);
     return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
@@ -736,6 +746,23 @@
 
   function formatRecordDuration(milliseconds) {
     return formatDurationForUnit(milliseconds, state.historyUnit);
+  }
+
+  function getDefaultTimeFormat() {
+    return localStorage.getItem(DEFAULT_TIME_FORMAT_KEY) === "clock" ? "clock" : "minutes";
+  }
+
+  function setSharedTimeFormat(unit, { saveDefault = false, notify = false } = {}) {
+    const normalizedUnit = unit === "clock" ? "clock" : "minutes";
+    state.historyUnit = normalizedUnit;
+    workSummaryUnit = normalizedUnit;
+    if (saveDefault) {
+      localStorage.setItem(DEFAULT_TIME_FORMAT_KEY, normalizedUnit);
+      elements.defaultTimeFormatSelect.value = normalizedUnit;
+    }
+    if (elements.historyDialog.open) renderHistory();
+    if (elements.workSummaryDialog.open) renderWorkSummary();
+    if (notify) showToast(normalizedUnit === "clock" ? "時間表記のデフォルトをhh:mm:ssに変更しました" : "時間表記のデフォルトを分に変更しました");
   }
 
   function formatDurationForUnit(milliseconds, unit = "minutes") {
@@ -1038,6 +1065,7 @@
     updatePastHistoryEditSetting();
     elements.themeSelect.value = getTheme();
     elements.primaryTimeDisplaySelect.value = getPrimaryTimeDisplay();
+    elements.defaultTimeFormatSelect.value = getDefaultTimeFormat();
     elements.backupStatus.textContent = "";
     elements.backupStatus.classList.remove("is-error");
     updatePopupSizeSettings();
@@ -1263,11 +1291,28 @@
     return name.trim() || `タイマー ${tab.number}`;
   }
 
+  function isTimerTabOvertime(tab) {
+    if (!tab || tab.mode !== MODES.COUNTDOWN || !tab.isRunning) return false;
+    const runningDeltaMs = Number.isFinite(tab.startedAt) ? Math.max(0, now() - tab.startedAt) : 0;
+    if (tab.pomodoroEnabled) {
+      const phaseElapsedMs = Math.max(0, tab.pomodoroPhaseElapsedBeforeStartMs || 0) + runningDeltaMs;
+      const phaseDurationMs = tab.pomodoroPhase === "break"
+        ? tab.pomodoroBreakDurationMs
+        : tab.countdownDurationMs;
+      return Number.isFinite(phaseDurationMs) && phaseElapsedMs >= phaseDurationMs;
+    }
+    const elapsedMs = Math.max(0, tab.elapsedBeforeStartMs || 0) + runningDeltaMs;
+    const sessionElapsedMs = elapsedMs - Math.max(0, tab.countdownSessionStartElapsedMs || 0);
+    return sessionElapsedMs >= tab.countdownDurationMs;
+  }
+
   function renderTimerTabs() {
     snapshotActiveTimer();
     const signature = JSON.stringify([
       state.activeTimerId,
-      state.timerTabs.map((tab) => [tab.id, tab.taskName, tab.number, tab.resumedRecordId, tab.isRunning]),
+      state.timerTabs.map((tab) => [
+        tab.id, tab.taskName, tab.number, tab.resumedRecordId, tab.isRunning, isTimerTabOvertime(tab),
+      ]),
     ]);
     if (signature === timerTabsSignature) return;
     timerTabsSignature = signature;
@@ -1278,6 +1323,7 @@
       item.classList.toggle("is-active", tab.id === state.activeTimerId);
       item.classList.toggle("is-history-resumed", Boolean(tab.resumedRecordId));
       item.classList.toggle("is-running-background", tab.isRunning && tab.id !== state.activeTimerId);
+      item.classList.toggle("is-countdown-overtime", isTimerTabOvertime(tab));
 
       const selectButton = document.createElement("button");
       selectButton.type = "button";
@@ -1580,15 +1626,19 @@
     updateDocumentTitle();
     elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
     const measurementMs = getDisplayMs();
-    const measurementLabel = state.mode === MODES.STOPWATCH
+    const measurementLabel = isAwaitingCountdownStop()
+      ? "超過"
+      : state.mode === MODES.STOPWATCH
       ? "計測"
       : isPomodoroActive()
         ? state.pomodoroPhase === "work" ? "作業 残り" : "休憩 残り"
         : "残り";
-    const measurementText = formatTime(
-      measurementMs,
-      state.mode === MODES.COUNTDOWN ? "ceil" : "floor",
-    );
+    const measurementText = isAwaitingCountdownStop()
+      ? `+${formatTime(getCountdownOvertimeMs())}`
+      : formatTime(
+        measurementMs,
+        state.mode === MODES.COUNTDOWN ? "ceil" : "floor",
+      );
     const showClockAsPrimary = getPrimaryTimeDisplay() === "clock";
     elements.timeDisplay.textContent = showClockAsPrimary ? currentClockText : measurementText;
     elements.secondaryTimeDisplay.textContent = showClockAsPrimary
@@ -1651,6 +1701,10 @@
     );
     renderTimerTabs();
     getCurrentBody().classList.toggle("is-minimized", state.isMinimized && isPopupContext());
+    getCurrentBody().classList.toggle(
+      "is-minimized-countdown-overtime",
+      state.isMinimized && isPopupContext() && isAwaitingCountdownStop(),
+    );
     elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "□" : "−";
     updateModeUi();
     updateStatus();
@@ -3199,6 +3253,9 @@
       render();
       showToast(value === "measurement" ? "計測時間を大きく表示します" : "現在時刻を大きく表示します");
     });
+    elements.defaultTimeFormatSelect.addEventListener("change", () => {
+      setSharedTimeFormat(elements.defaultTimeFormatSelect.value, { saveDefault: true, notify: true });
+    });
     elements.timeDisplayArea.addEventListener("click", togglePrimaryTimeDisplay);
     elements.timeDisplay.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -3325,10 +3382,11 @@
     elements.clockOutInput.addEventListener("change", () => saveWorkSummaryTimes({ applyDefaultBreak: true }));
     elements.breakTimeInput.addEventListener("change", () => saveWorkSummaryTimes({ breakEdited: true }));
     elements.workSummaryUnitButtons.forEach((button) => button.addEventListener("click", () => {
-      workSummaryUnit = button.dataset.workSummaryUnit === "clock" ? "clock" : "minutes";
-      renderWorkSummary();
+      setSharedTimeFormat(button.dataset.workSummaryUnit);
     }));
-    elements.unitButtons.forEach((button) => button.addEventListener("click", () => { state.historyUnit = button.dataset.unit; renderHistory(); }));
+    elements.unitButtons.forEach((button) => button.addEventListener("click", () => {
+      setSharedTimeFormat(button.dataset.unit);
+    }));
     elements.addHistoryButton.addEventListener("click", openAddHistoryDialog);
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
     [elements.manualStartTimeInput, elements.manualEndTimeInput]
@@ -3404,6 +3462,8 @@
       localStorage.setItem(DEFAULT_MODE_KEY, MODES.COUNTDOWN);
     }
     loadState();
+    state.historyUnit = getDefaultTimeFormat();
+    workSummaryUnit = state.historyUnit;
     loadDailyMemos();
     loadWorkdayTimes();
     const isPopup = new URLSearchParams(location.search).has("popup");
