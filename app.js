@@ -3324,6 +3324,14 @@
       }
       return;
     }
+    const isResetShortcut = !event.metaKey && !event.ctrlKey && event.altKey && event.shiftKey && event.code === "KeyR";
+    if (isResetShortcut) {
+      if (!hasOpenDialog && !hasOpenConfirmation) {
+        event.preventDefault();
+        requestResetOrFinishBreak();
+      }
+      return;
+    }
     if (isResetConfirmOpen()) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -3390,7 +3398,6 @@
       event.preventDefault();
       toggleTimer();
     }
-    else if (key === "r") requestResetOrFinishBreak();
   }
 
   function bindEvents() {
