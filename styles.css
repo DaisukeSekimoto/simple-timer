@@ -972,7 +972,7 @@ h1 {
 
 .finish-sound-volume-setting {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px auto;
+  grid-template-columns: minmax(0, 1fr) 84px auto;
   align-items: center;
   gap: 10px;
 }
@@ -982,12 +982,30 @@ h1 {
   accent-color: var(--accent);
 }
 
-.finish-sound-volume-setting output {
+.finish-sound-volume-number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.finish-sound-volume-number input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.finish-sound-volume-number span {
   color: var(--muted);
   font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
   font-weight: 700;
-  text-align: right;
 }
 
 .finish-sound-volume-setting button {

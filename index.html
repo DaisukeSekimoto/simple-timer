@@ -277,7 +277,10 @@
           <h3 id="finish-sound-volume-title">カウントダウン0秒時の音量</h3>
           <div class="finish-sound-volume-setting" aria-labelledby="finish-sound-volume-title">
             <input id="finish-sound-volume-input" type="range" min="0" max="100" step="5" value="50" aria-labelledby="finish-sound-volume-title">
-            <output id="finish-sound-volume-value" for="finish-sound-volume-input">50%</output>
+            <label class="finish-sound-volume-number">
+              <input id="finish-sound-volume-number-input" type="number" inputmode="numeric" min="0" step="1" value="50" aria-label="終了音量の数値">
+              <span>%</span>
+            </label>
             <button id="preview-finish-sound-button" class="secondary-button" type="button">試聴</button>
           </div>
           <h3 id="popup-size-settings-title">ピクチャーインピクチャーのサイズ</h3>

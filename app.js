@@ -72,7 +72,7 @@
     primaryTimeDisplaySelect: document.querySelector("#primary-time-display-select"),
     defaultTimeFormatSelect: document.querySelector("#default-time-format-select"),
     finishSoundVolumeInput: document.querySelector("#finish-sound-volume-input"),
-    finishSoundVolumeValue: document.querySelector("#finish-sound-volume-value"),
+    finishSoundVolumeNumberInput: document.querySelector("#finish-sound-volume-number-input"),
     previewFinishSoundButton: document.querySelector("#preview-finish-sound-button"),
     backupExportButton: document.querySelector("#backup-export-button"),
     backupImportButton: document.querySelector("#backup-import-button"),
@@ -1152,13 +1152,23 @@
 
   function getFinishSoundVolume() {
     const savedVolume = Number.parseInt(localStorage.getItem(FINISH_SOUND_VOLUME_KEY) || "50", 10);
-    return Number.isFinite(savedVolume) ? clamp(savedVolume, 0, 100) : 50;
+    return Number.isSafeInteger(savedVolume) ? Math.max(0, savedVolume) : 50;
   }
 
   function updateFinishSoundVolumeSetting() {
     const volume = getFinishSoundVolume();
-    elements.finishSoundVolumeInput.value = String(volume);
-    elements.finishSoundVolumeValue.textContent = `${volume}%`;
+    elements.finishSoundVolumeInput.value = String(Math.min(100, volume));
+    elements.finishSoundVolumeNumberInput.value = String(volume);
+  }
+
+  function saveFinishSoundVolume(value) {
+    const parsedVolume = Number(value);
+    if (!Number.isSafeInteger(parsedVolume)) return false;
+    const volume = Math.max(0, parsedVolume);
+    localStorage.setItem(FINISH_SOUND_VOLUME_KEY, String(volume));
+    elements.finishSoundVolumeInput.value = String(Math.min(100, volume));
+    elements.finishSoundVolumeNumberInput.value = String(volume);
+    return true;
   }
 
   function togglePrimaryTimeDisplay() {
@@ -1278,7 +1288,7 @@
     }
     if (backup.storage[FINISH_SOUND_VOLUME_KEY] !== null) {
       const volume = Number(backup.storage[FINISH_SOUND_VOLUME_KEY]);
-      if (!Number.isFinite(volume) || volume < 0 || volume > 100) {
+      if (!Number.isSafeInteger(volume) || volume < 0) {
         throw new Error("バックアップ内の終了音量設定が正しくありません。");
       }
     }
@@ -3496,9 +3506,16 @@
       setSharedTimeFormat(elements.defaultTimeFormatSelect.value, { saveDefault: true, notify: true });
     });
     elements.finishSoundVolumeInput.addEventListener("input", () => {
-      const volume = clamp(Number(elements.finishSoundVolumeInput.value), 0, 100);
-      localStorage.setItem(FINISH_SOUND_VOLUME_KEY, String(volume));
-      elements.finishSoundVolumeValue.textContent = `${volume}%`;
+      saveFinishSoundVolume(Number(elements.finishSoundVolumeInput.value));
+    });
+    elements.finishSoundVolumeNumberInput.addEventListener("input", () => {
+      if (elements.finishSoundVolumeNumberInput.value === "") return;
+      saveFinishSoundVolume(Number(elements.finishSoundVolumeNumberInput.value));
+    });
+    elements.finishSoundVolumeNumberInput.addEventListener("change", () => {
+      if (!saveFinishSoundVolume(Number(elements.finishSoundVolumeNumberInput.value))) {
+        updateFinishSoundVolumeSetting();
+      }
     });
     elements.previewFinishSoundButton.addEventListener("click", () => {
       if (getFinishSoundVolume() <= 0) {
