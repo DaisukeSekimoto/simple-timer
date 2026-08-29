@@ -73,6 +73,11 @@
     backupImportButton: document.querySelector("#backup-import-button"),
     backupFileInput: document.querySelector("#backup-file-input"),
     backupStatus: document.querySelector("#backup-status"),
+    backupImportModeDialog: document.querySelector("#backup-import-mode-dialog"),
+    backupImportSummary: document.querySelector("#backup-import-summary"),
+    cancelBackupImportButton: document.querySelector("#cancel-backup-import-button"),
+    replaceBackupImportButton: document.querySelector("#replace-backup-import-button"),
+    mergeBackupImportButton: document.querySelector("#merge-backup-import-button"),
     timerTabList: document.querySelector("#timer-tab-list"),
     addTimerTabButton: document.querySelector("#add-timer-tab-button"),
     timerTabConfirmOverlay: document.querySelector("#timer-tab-confirm-overlay"),
@@ -269,6 +274,7 @@
   let pastHistoryEditUnlockedUntil = 0;
   let pastHistoryEditTimeoutId = 0;
   let pendingUntilPomodoroPlan = null;
+  let pendingBackupImport = null;
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -1243,6 +1249,84 @@
     }
   }
 
+  function parseBackupJsonValue(storage, key, fallback) {
+    try {
+      const value = storage[key];
+      return value === null || value === undefined ? fallback : JSON.parse(value);
+    } catch {
+      return fallback;
+    }
+  }
+
+  function recordMergeKey(record) {
+    if (record && typeof record.id === "string" && record.id) return `id:${record.id}`;
+    return `record:${[
+      record?.date,
+      record?.createdAt,
+      record?.firstStartedAt,
+      record?.taskName,
+      record?.durationMs,
+    ].join("|")}`;
+  }
+
+  function mergeBackupData(backup) {
+    saveState();
+    saveRecords();
+    saveDailyMemos();
+    saveWorkdayTimes();
+
+    const storedCurrentRecords = parseBackupJsonValue(
+      { [RECORDS_KEY]: localStorage.getItem(RECORDS_KEY) }, RECORDS_KEY, [],
+    );
+    const storedImportedRecords = parseBackupJsonValue(backup.storage, RECORDS_KEY, []);
+    const currentRecords = Array.isArray(storedCurrentRecords) ? storedCurrentRecords : [];
+    const importedRecords = Array.isArray(storedImportedRecords) ? storedImportedRecords : [];
+    const mergedRecords = [];
+    const recordKeys = new Set();
+    [...currentRecords, ...importedRecords].forEach((record) => {
+      const key = recordMergeKey(record);
+      if (recordKeys.has(key)) return;
+      recordKeys.add(key);
+      mergedRecords.push(record);
+    });
+
+    const currentMemos = parseBackupJsonValue(
+      { [DAILY_MEMOS_KEY]: localStorage.getItem(DAILY_MEMOS_KEY) }, DAILY_MEMOS_KEY, {},
+    );
+    const importedMemos = parseBackupJsonValue(backup.storage, DAILY_MEMOS_KEY, {});
+    const currentWorkdays = parseBackupJsonValue(
+      { [WORKDAY_TIMES_KEY]: localStorage.getItem(WORKDAY_TIMES_KEY) }, WORKDAY_TIMES_KEY, {},
+    );
+    const importedWorkdays = parseBackupJsonValue(backup.storage, WORKDAY_TIMES_KEY, {});
+
+    localStorage.setItem(RECORDS_KEY, JSON.stringify(mergedRecords));
+    localStorage.setItem(DAILY_MEMOS_KEY, JSON.stringify({ ...importedMemos, ...currentMemos }));
+    localStorage.setItem(WORKDAY_TIMES_KEY, JSON.stringify({ ...importedWorkdays, ...currentWorkdays }));
+  }
+
+  function finishBackupImport(mode) {
+    if (!pendingBackupImport) return;
+    const backup = pendingBackupImport;
+    pendingBackupImport = null;
+    if (elements.backupImportModeDialog.open) elements.backupImportModeDialog.close();
+    if (mode === "merge") {
+      mergeBackupData(backup);
+    } else {
+      BACKUP_STORAGE_KEYS.forEach((key) => {
+        const value = backup.storage[key];
+        if (value === null) localStorage.removeItem(key);
+        else localStorage.setItem(key, value);
+      });
+    }
+    location.reload();
+  }
+
+  function hasCurrentImportableData() {
+    return state.records.length > 0 ||
+      Object.keys(dailyMemos).length > 0 ||
+      Object.keys(workdayTimes).length > 0;
+  }
+
   async function importBackup(event) {
     const [file] = event.target.files;
     event.target.value = "";
@@ -1250,20 +1334,13 @@
     try {
       const backup = JSON.parse(await file.text());
       validateBackup(backup);
-      const shouldImport = window.confirm(
-        `バックアップの内容\n\n${getBackupSummary(backup.storage)}\n\n` +
-        "現在のタイマー、作業履歴、メモ、設定をこの内容で置き換えます。インポートしてよろしいですか？",
-      );
-      if (!shouldImport) {
-        setBackupStatus("インポートをキャンセルしました。");
+      pendingBackupImport = backup;
+      if (!hasCurrentImportableData()) {
+        finishBackupImport("replace");
         return;
       }
-      BACKUP_STORAGE_KEYS.forEach((key) => {
-        const value = backup.storage[key];
-        if (value === null) localStorage.removeItem(key);
-        else localStorage.setItem(key, value);
-      });
-      location.reload();
+      elements.backupImportSummary.textContent = `バックアップの内容\n${getBackupSummary(backup.storage)}`;
+      elements.backupImportModeDialog.showModal();
     } catch (error) {
       setBackupStatus(error instanceof Error ? error.message : "バックアップを読み込めませんでした。", true);
     }
@@ -3373,6 +3450,17 @@
     elements.backupExportButton.addEventListener("click", exportBackup);
     elements.backupImportButton.addEventListener("click", () => elements.backupFileInput.click());
     elements.backupFileInput.addEventListener("change", importBackup);
+    elements.cancelBackupImportButton.addEventListener("click", () => {
+      pendingBackupImport = null;
+      elements.backupImportModeDialog.close();
+      setBackupStatus("インポートをキャンセルしました。");
+    });
+    elements.mergeBackupImportButton.addEventListener("click", () => finishBackupImport("merge"));
+    elements.replaceBackupImportButton.addEventListener("click", () => finishBackupImport("replace"));
+    elements.backupImportModeDialog.addEventListener("cancel", () => {
+      pendingBackupImport = null;
+      setBackupStatus("インポートをキャンセルしました。");
+    });
     elements.cancelTimerNavigationButton.addEventListener("click", closeTimerNavigationConfirm);
     elements.confirmTimerNavigationButton.addEventListener("click", confirmTimerNavigation);
     elements.timerNavigationConfirmOverlay.addEventListener("click", (event) => {

@@ -1000,6 +1000,14 @@ h1 {
   gap: 8px;
 }
 
+.confirm-actions.backup-import-mode-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#backup-import-summary {
+  white-space: pre-line;
+}
+
 .settings-backup-actions button {
   min-height: 42px;
 }
@@ -1061,6 +1069,10 @@ h1 {
 
 @media (max-width: 360px) {
   .settings-backup-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-actions.backup-import-mode-actions {
     grid-template-columns: 1fr;
   }
 }

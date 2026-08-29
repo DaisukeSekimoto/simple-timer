@@ -378,6 +378,19 @@
       </section>
     </dialog>
 
+    <dialog id="backup-import-mode-dialog" class="modal">
+      <section class="modal-card confirm-card">
+        <h2>バックアップの読み込み方法</h2>
+        <p id="backup-import-summary" class="confirm-message"></p>
+        <p class="settings-description">結合では現在のタイマーと設定を維持し、履歴・日別メモ・出退勤記録を追加します。同じID・日付は現在のデータを優先します。</p>
+        <div class="confirm-actions backup-import-mode-actions">
+          <button id="cancel-backup-import-button" class="secondary-button" type="button">キャンセル</button>
+          <button id="replace-backup-import-button" class="danger-button" type="button">すべて置換</button>
+          <button id="merge-backup-import-button" class="primary-button" type="button">データを結合</button>
+        </div>
+      </section>
+    </dialog>
+
     <dialog id="history-dialog" class="modal">
       <section class="modal-card history-card">
         <div class="modal-header">
