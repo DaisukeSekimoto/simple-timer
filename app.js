@@ -1695,21 +1695,20 @@
   }
 
   function updateStatus() {
+    const isCountdownWaiting = state.mode === MODES.COUNTDOWN &&
+      state.elapsedBeforeStartMs > 0 && getCountdownSessionElapsedMs() === 0;
     if (isAwaitingCountdownStop()) {
       elements.statusText.textContent = "0秒になりました。停止ボタンを押してください";
     }
     else if (isPomodoroActive() && state.isRunning) {
-      elements.statusText.textContent = state.pomodoroPhase === "work" ? "ポモドーロ作業中" : "休憩中（作業時間には含まれません）";
+      elements.statusText.textContent = state.pomodoroPhase === "work" ? "作業中" : "休憩中";
     }
     else if (isPomodoroActive() && state.pomodoroPhaseElapsedBeforeStartMs > 0) {
       elements.statusText.textContent = state.pomodoroPhase === "work" ? "作業を一時停止中" : "休憩を一時停止中";
     }
     else if (state.finishedAt) elements.statusText.textContent = "完了";
-    else if (state.isRunning) elements.statusText.textContent = state.mode === MODES.COUNTDOWN ? "集中時間を計測中" : "作業時間を計測中";
-    else if (state.mode === MODES.COUNTDOWN && state.elapsedBeforeStartMs > 0 && getCountdownSessionElapsedMs() === 0) {
-      elements.statusText.textContent = "作業時間を保持して待機中";
-    }
-    else if (state.elapsedBeforeStartMs > 0) elements.statusText.textContent = "一時停止中";
+    else if (state.isRunning) elements.statusText.textContent = "計測中";
+    else if (state.elapsedBeforeStartMs > 0 && !isCountdownWaiting) elements.statusText.textContent = "一時停止中";
     else elements.statusText.textContent = "待機中";
   }
 
