@@ -78,7 +78,7 @@
             <div class="pomodoro-footer">
               <div id="pomodoro-break-settings" class="pomodoro-break-settings" aria-hidden="true">
                 <label>
-                  <span>休憩（作業時間外）</span>
+                  <span>休憩時間（1回）</span>
                   <input id="pomodoro-break-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="5" disabled>
                   <span>分</span>
                 </label>
@@ -162,7 +162,16 @@
       <form id="countdown-duration-form" class="modal-card">
         <div class="modal-header">
           <h2>カウントダウン時間を設定</h2>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+          <div class="countdown-dialog-header-actions">
+            <label class="pomodoro-toggle countdown-dialog-pomodoro-toggle">
+              <span class="pomodoro-toggle-label">ポモドーロ</span>
+              <input id="countdown-dialog-pomodoro-input" type="checkbox">
+              <span class="pomodoro-toggle-track" aria-hidden="true">
+                <span class="pomodoro-toggle-thumb"></span>
+              </span>
+            </label>
+            <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+          </div>
         </div>
         <fieldset class="countdown-settings">
           <section class="until-time-section" aria-labelledby="until-time-title">
@@ -171,22 +180,31 @@
               <input id="until-time-input" type="time" step="60" aria-label="終了時刻">
               <button id="apply-until-time-button" class="secondary-button" type="button">残り時間へ反映</button>
             </div>
-            <p id="until-time-status" class="settings-description" aria-live="polite">指定時刻までの時間を自動計算します。</p>
           </section>
-          <div class="time-inputs">
-            <label>
-              <span>時</span>
-              <input id="hours-input" type="number" inputmode="numeric" min="0" max="99" step="1" value="0">
-            </label>
-            <label>
-              <span>分</span>
-              <input id="minutes-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="25">
-            </label>
-            <label>
-              <span>秒</span>
-              <input id="seconds-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
-            </label>
-          </div>
+            <h3 id="countdown-work-duration-legend">作業時間</h3>
+            <div class="time-inputs">
+              <label>
+                <span>時</span>
+                <input id="hours-input" type="number" inputmode="numeric" min="0" max="99" step="1" value="0">
+              </label>
+              <label>
+                <span>分</span>
+                <input id="minutes-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="25">
+              </label>
+              <label>
+                <span>秒</span>
+                <input id="seconds-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
+              </label>
+            </div>
+            <div id="until-time-pomodoro-settings" class="until-time-pomodoro-settings" hidden>
+              <label>
+                <span>休憩時間（1回）</span>
+                <input id="until-time-break-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="5">
+                <span>分</span>
+              </label>
+            </div>
+            <p id="until-time-pomodoro-help" class="settings-description" hidden>上の「1回の作業時間」と休憩時間を使って、指定時刻までの構成を自動計算します。</p>
+            <p id="until-time-status" class="settings-description" aria-live="polite"></p>
           <div class="preset-row" aria-label="プリセット">
             <button type="button" class="preset-button" data-seconds="300">5分</button>
             <button type="button" class="preset-button" data-seconds="900">15分</button>

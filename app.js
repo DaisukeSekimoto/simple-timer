@@ -97,12 +97,17 @@
     countdownDurationDisplay: document.querySelector("#countdown-duration-display"),
     countdownDurationDialog: document.querySelector("#countdown-duration-dialog"),
     countdownDurationForm: document.querySelector("#countdown-duration-form"),
+    countdownDialogPomodoroInput: document.querySelector("#countdown-dialog-pomodoro-input"),
     untilTimeInput: document.querySelector("#until-time-input"),
     applyUntilTimeButton: document.querySelector("#apply-until-time-button"),
     untilTimeStatus: document.querySelector("#until-time-status"),
+    untilTimePomodoroHelp: document.querySelector("#until-time-pomodoro-help"),
+    untilTimePomodoroSettings: document.querySelector("#until-time-pomodoro-settings"),
+    untilTimeBreakInput: document.querySelector("#until-time-break-input"),
     hoursInput: document.querySelector("#hours-input"),
     minutesInput: document.querySelector("#minutes-input"),
     secondsInput: document.querySelector("#seconds-input"),
+    countdownWorkDurationLegend: document.querySelector("#countdown-work-duration-legend"),
     presetButtons: Array.from(document.querySelectorAll(".preset-button")),
     taskButton: document.querySelector("#task-button"),
     taskNameDisplay: document.querySelector("#task-name-display"),
@@ -204,6 +209,9 @@
     pomodoroPhase: "work",
     pomodoroPhaseElapsedBeforeStartMs: 0,
     pomodoroBreakDurationMs: DEFAULT_POMODORO_BREAK_MS,
+    pomodoroPlannedBreakCount: -1,
+    pomodoroCompletedBreakCount: 0,
+    pomodoroFinalWorkDurationMs: 0,
     taskName: "",
     taskMemo: "",
     firstStartedAt: 0,
@@ -260,6 +268,7 @@
   let currentClockText = "00:00:00";
   let pastHistoryEditUnlockedUntil = 0;
   let pastHistoryEditTimeoutId = 0;
+  let pendingUntilPomodoroPlan = null;
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -408,6 +417,9 @@
       pomodoroPhase: "work",
       pomodoroPhaseElapsedBeforeStartMs: 0,
       pomodoroBreakDurationMs: DEFAULT_POMODORO_BREAK_MS,
+      pomodoroPlannedBreakCount: -1,
+      pomodoroCompletedBreakCount: 0,
+      pomodoroFinalWorkDurationMs: 0,
       taskName: "",
       taskMemo: "",
       firstStartedAt: 0,
@@ -445,6 +457,9 @@
     tab.pomodoroPhase = state.pomodoroPhase;
     tab.pomodoroPhaseElapsedBeforeStartMs = getPomodoroPhaseElapsedMs();
     tab.pomodoroBreakDurationMs = state.pomodoroBreakDurationMs;
+    tab.pomodoroPlannedBreakCount = state.pomodoroPlannedBreakCount;
+    tab.pomodoroCompletedBreakCount = state.pomodoroCompletedBreakCount;
+    tab.pomodoroFinalWorkDurationMs = state.pomodoroFinalWorkDurationMs;
     tab.taskName = state.taskName;
     tab.taskMemo = state.taskMemo;
     tab.firstStartedAt = state.firstStartedAt;
@@ -495,6 +510,15 @@
     state.pomodoroBreakDurationMs = Number.isFinite(tab.pomodoroBreakDurationMs) && tab.pomodoroBreakDurationMs > 0
       ? tab.pomodoroBreakDurationMs
       : DEFAULT_POMODORO_BREAK_MS;
+    state.pomodoroPlannedBreakCount = Number.isInteger(tab.pomodoroPlannedBreakCount)
+      ? Math.max(-1, tab.pomodoroPlannedBreakCount)
+      : -1;
+    state.pomodoroCompletedBreakCount = Number.isInteger(tab.pomodoroCompletedBreakCount)
+      ? Math.max(0, tab.pomodoroCompletedBreakCount)
+      : 0;
+    state.pomodoroFinalWorkDurationMs = Number.isFinite(tab.pomodoroFinalWorkDurationMs)
+      ? Math.max(0, tab.pomodoroFinalWorkDurationMs)
+      : 0;
     state.taskName = tab.taskName;
     state.taskMemo = typeof tab.taskMemo === "string" ? tab.taskMemo : "";
     state.firstStartedAt = Number.isFinite(tab.firstStartedAt) ? tab.firstStartedAt : 0;
@@ -721,6 +745,21 @@
       dayLabel = "翌日";
     }
     const durationSeconds = Math.max(1, Math.ceil((target.getTime() - current.getTime()) / 1000));
+    if (state.pomodoroEnabled) {
+      const workUnitSeconds = Math.max(1, Math.round(getDurationFromInputs() / 1000));
+      const breakMinutes = Math.min(60, Math.max(1, normalizeSeconds(elements.untilTimeBreakInput.value, 5)));
+      const breakSeconds = breakMinutes * 60;
+      const breakCount = Math.floor(Math.max(0, durationSeconds - 1) / (workUnitSeconds + breakSeconds));
+      const finalWorkSeconds = durationSeconds - breakCount * (workUnitSeconds + breakSeconds);
+      const firstWorkSeconds = breakCount > 0 ? workUnitSeconds : finalWorkSeconds;
+      pendingUntilPomodoroPlan = { breakMinutes, breakCount, finalWorkSeconds, firstWorkSeconds };
+      elements.untilTimeStatus.textContent =
+        `→ 作業 ${formatTime(workUnitSeconds * 1000)}単位\n` +
+        `　 休憩 ${breakMinutes}分 × ${breakCount}回\n` +
+        `　 最終作業 ${formatTime(finalWorkSeconds * 1000)}`;
+      return;
+    }
+    pendingUntilPomodoroPlan = null;
     setCountdownDurationInputs(durationSeconds);
     elements.untilTimeStatus.textContent =
       `${dayLabel} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}まで（残り ${formatTime(durationSeconds * 1000)}）`;
@@ -732,6 +771,7 @@
     elements.countdownDurationDisplay.textContent = formatTime(state.countdownDurationMs);
     elements.pomodoroEnabledInput.checked = state.pomodoroEnabled;
     elements.pomodoroBreakInput.value = String(Math.round(state.pomodoroBreakDurationMs / 60000));
+    elements.untilTimeBreakInput.value = String(Math.round(state.pomodoroBreakDurationMs / 60000));
   }
 
   function formatTime(milliseconds, rounding = "floor") {
@@ -1543,6 +1583,15 @@
     elements.pomodoroBreakSettings.classList.toggle("is-active", state.pomodoroEnabled);
     elements.pomodoroBreakSettings.setAttribute("aria-hidden", String(!state.pomodoroEnabled));
     elements.pomodoroBreakInput.disabled = !state.pomodoroEnabled;
+    elements.countdownDurationButton.querySelector("span").textContent = state.pomodoroEnabled
+      ? "作業時間（1回）"
+      : "作業時間";
+    elements.countdownWorkDurationLegend.textContent = state.pomodoroEnabled
+      ? "作業時間（1回）"
+      : "作業時間";
+    elements.untilTimePomodoroSettings.hidden = !state.pomodoroEnabled;
+    elements.untilTimePomodoroHelp.hidden = !state.pomodoroEnabled;
+    elements.countdownDialogPomodoroInput.checked = state.pomodoroEnabled;
   }
 
   function updateStatus() {
@@ -1648,7 +1697,15 @@
     elements.timeMetaRow.hidden = false;
     elements.cumulativeTimeDisplay.textContent = `作業時間 ${formatTime(getElapsedMs())}`;
     elements.pomodoroPhaseDisplay.hidden = !isPomodoroActive();
-    elements.pomodoroPhaseDisplay.textContent = state.pomodoroPhase === "work" ? "作業" : "休憩（作業時間外）";
+    const plannedWorkCount = state.pomodoroPlannedBreakCount >= 0
+      ? state.pomodoroPlannedBreakCount + 1
+      : 0;
+    const currentWorkNumber = Math.min(state.pomodoroCompletedBreakCount + 1, plannedWorkCount || Infinity);
+    elements.pomodoroPhaseDisplay.textContent = state.pomodoroPhase === "work"
+      ? plannedWorkCount ? `作業 ${currentWorkNumber}/${plannedWorkCount}` : "作業"
+      : plannedWorkCount
+        ? `休憩 ${state.pomodoroCompletedBreakCount + 1}/${state.pomodoroPlannedBreakCount}`
+        : "休憩（作業時間外）";
     elements.pomodoroPhaseDisplay.classList.toggle("is-break", state.pomodoroPhase === "break");
     const canResumeCurrentSession = isPomodoroActive()
       ? state.pomodoroPhaseElapsedBeforeStartMs > 0
@@ -1840,6 +1897,9 @@
     state.resumedRecordId = "";
     state.pomodoroPhase = "work";
     state.pomodoroPhaseElapsedBeforeStartMs = 0;
+    state.pomodoroPlannedBreakCount = -1;
+    state.pomodoroCompletedBreakCount = 0;
+    state.pomodoroFinalWorkDurationMs = 0;
     stopTicking();
     if (state.mode === MODES.COUNTDOWN) {
       state.countdownDurationMs = getDurationFromInputs();
@@ -1916,9 +1976,28 @@
         0,
         state.countdownDurationMs - state.pomodoroPhaseElapsedBeforeStartMs,
       );
+      if (state.pomodoroPlannedBreakCount >= 0 &&
+          state.pomodoroCompletedBreakCount >= state.pomodoroPlannedBreakCount) {
+        state.pomodoroEnabled = false;
+        state.pomodoroPhase = "work";
+        state.pomodoroPhaseElapsedBeforeStartMs = 0;
+        state.countdownSessionStartElapsedMs = Math.max(0, state.elapsedBeforeStartMs - state.countdownDurationMs);
+        state.finishedAt = now();
+        saveState();
+        render();
+        showToast("指定時刻までのポモドーロが完了しました");
+        return;
+      }
       state.pomodoroPhase = "break";
     } else {
+      state.pomodoroCompletedBreakCount += 1;
       state.pomodoroPhase = "work";
+      if (state.pomodoroPlannedBreakCount >= 0 &&
+          state.pomodoroCompletedBreakCount >= state.pomodoroPlannedBreakCount &&
+          state.pomodoroFinalWorkDurationMs > 0) {
+        state.countdownDurationMs = state.pomodoroFinalWorkDurationMs;
+        syncInputsFromDuration();
+      }
     }
     state.pomodoroPhaseElapsedBeforeStartMs = 0;
     state.finishedAt = 0;
@@ -1930,6 +2009,14 @@
 
   function finishPomodoroBreakEarly() {
     freezeRunningTimer();
+    if (state.pomodoroPlannedBreakCount >= 0) {
+      state.pomodoroCompletedBreakCount += 1;
+      if (state.pomodoroCompletedBreakCount >= state.pomodoroPlannedBreakCount &&
+          state.pomodoroFinalWorkDurationMs > 0) {
+        state.countdownDurationMs = state.pomodoroFinalWorkDurationMs;
+        syncInputsFromDuration();
+      }
+    }
     state.pomodoroPhase = "work";
     state.pomodoroPhaseElapsedBeforeStartMs = 0;
     state.finishedAt = 0;
@@ -2728,18 +2815,15 @@
   }
 
   function openAddHistoryDialog() {
-    const defaultEndDate = new Date(now());
-    defaultEndDate.setMinutes(Math.floor(defaultEndDate.getMinutes() / 30) * 30, 0, 0);
-    const defaultStartDate = new Date(defaultEndDate.getTime() - 60 * 60 * 1000);
     elements.manualDate.value = localDateKey();
     elements.manualTaskInput.value = "";
     elements.manualMemoInput.value = "";
     elements.manualHoursInput.value = "0";
     elements.manualMinutesInput.value = "0";
     elements.manualSecondsInput.value = "0";
-    elements.manualStartTimeInput.value = formatTimeInputValue(defaultStartDate);
-    elements.manualEndTimeInput.value = formatTimeInputValue(defaultEndDate);
-    previousManualTimeRangeDurationMs = defaultEndDate.getTime() - defaultStartDate.getTime();
+    elements.manualStartTimeInput.value = "";
+    elements.manualEndTimeInput.value = "";
+    previousManualTimeRangeDurationMs = null;
     elements.manualHistoryError.textContent = "";
     renderRecentTasks(elements.manualRecentTaskList, elements.manualTaskInput);
     elements.addHistoryDialog.showModal();
@@ -3310,6 +3394,9 @@
       const wasRunning = state.isRunning;
       freezeRunningTimer();
       state.pomodoroEnabled = elements.pomodoroEnabledInput.checked;
+      state.pomodoroPlannedBreakCount = -1;
+      state.pomodoroCompletedBreakCount = 0;
+      state.pomodoroFinalWorkDurationMs = 0;
       state.pomodoroBreakDurationMs =
         Math.max(1, normalizeSeconds(elements.pomodoroBreakInput.value, 5)) * 60000;
       if (state.pomodoroEnabled) {
@@ -3334,6 +3421,11 @@
         ? "残り時間を維持してポモドーロを有効にしました"
         : "残り時間を維持してポモドーロを無効にしました");
     });
+    elements.countdownDialogPomodoroInput.addEventListener("change", () => {
+      elements.pomodoroEnabledInput.checked = elements.countdownDialogPomodoroInput.checked;
+      const view = elements.app.ownerDocument.defaultView || window;
+      elements.pomodoroEnabledInput.dispatchEvent(new view.Event("change"));
+    });
     elements.pomodoroBreakInput.addEventListener("change", () => {
       state.pomodoroBreakDurationMs =
         Math.max(1, normalizeSeconds(elements.pomodoroBreakInput.value, 5)) * 60000;
@@ -3342,15 +3434,34 @@
     });
     elements.countdownDurationButton.addEventListener("click", () => {
       syncInputsFromDuration();
-      elements.untilTimeStatus.textContent = "指定時刻までの時間を自動計算します。";
+      pendingUntilPomodoroPlan = null;
+      elements.untilTimePomodoroSettings.hidden = !state.pomodoroEnabled;
+      elements.untilTimeStatus.textContent = "";
       elements.countdownDurationDialog.showModal();
       window.setTimeout(() => elements.hoursInput.focus(), 0);
     });
     elements.countdownDurationForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      setCountdownDuration(getDurationFromInputs() / 1000);
+      if (pendingUntilPomodoroPlan && state.pomodoroEnabled) {
+        state.pomodoroBreakDurationMs = pendingUntilPomodoroPlan.breakMinutes * 60000;
+        state.pomodoroPlannedBreakCount = pendingUntilPomodoroPlan.breakCount;
+        state.pomodoroCompletedBreakCount = 0;
+        state.pomodoroFinalWorkDurationMs = pendingUntilPomodoroPlan.finalWorkSeconds * 1000;
+        elements.pomodoroBreakInput.value = String(pendingUntilPomodoroPlan.breakMinutes);
+      } else {
+        state.pomodoroPlannedBreakCount = -1;
+        state.pomodoroCompletedBreakCount = 0;
+        state.pomodoroFinalWorkDurationMs = 0;
+      }
+      const durationSeconds = pendingUntilPomodoroPlan
+        ? pendingUntilPomodoroPlan.firstWorkSeconds
+        : getDurationFromInputs() / 1000;
+      setCountdownDuration(durationSeconds);
+      pendingUntilPomodoroPlan = null;
       elements.countdownDurationDialog.close();
-      showToast("カウントダウン時間を変更しました");
+      showToast(state.pomodoroEnabled && state.pomodoroPlannedBreakCount >= 0
+        ? "指定時刻までのポモドーロを設定しました"
+        : "カウントダウン時間を変更しました");
     });
     elements.countdownDurationDialog.addEventListener("close", syncInputsFromDuration);
     elements.applyUntilTimeButton.addEventListener("click", applyUntilTimeToInputs);
