@@ -970,6 +970,31 @@ h1 {
   line-height: 1.55;
 }
 
+.finish-sound-volume-setting {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.finish-sound-volume-setting input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.finish-sound-volume-setting output {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.finish-sound-volume-setting button {
+  min-height: 34px;
+  padding: 5px 12px;
+}
+
 .settings-check-field {
   display: flex;
   align-items: flex-start;

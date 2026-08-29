@@ -10,6 +10,7 @@
   const THEME_KEY = "simple-timer-theme";
   const PRIMARY_TIME_DISPLAY_KEY = "simple-timer-primary-time-display";
   const DEFAULT_TIME_FORMAT_KEY = "simple-timer-default-time-format";
+  const FINISH_SOUND_VOLUME_KEY = "simple-timer-finish-sound-volume";
   const BACKUP_FORMAT = "simple-timer-backup";
   const BACKUP_VERSION = 1;
   const BACKUP_STORAGE_KEYS = [
@@ -24,6 +25,7 @@
     THEME_KEY,
     PRIMARY_TIME_DISPLAY_KEY,
     DEFAULT_TIME_FORMAT_KEY,
+    FINISH_SOUND_VOLUME_KEY,
   ];
   const MODES = { COUNTDOWN: "countdown", STOPWATCH: "stopwatch" };
   const DEFAULT_COUNTDOWN_SECONDS = 25 * 60;
@@ -69,6 +71,9 @@
     themeSelect: document.querySelector("#theme-select"),
     primaryTimeDisplaySelect: document.querySelector("#primary-time-display-select"),
     defaultTimeFormatSelect: document.querySelector("#default-time-format-select"),
+    finishSoundVolumeInput: document.querySelector("#finish-sound-volume-input"),
+    finishSoundVolumeValue: document.querySelector("#finish-sound-volume-value"),
+    previewFinishSoundButton: document.querySelector("#preview-finish-sound-button"),
     backupExportButton: document.querySelector("#backup-export-button"),
     backupImportButton: document.querySelector("#backup-import-button"),
     backupFileInput: document.querySelector("#backup-file-input"),
@@ -1112,6 +1117,7 @@
     elements.themeSelect.value = getTheme();
     elements.primaryTimeDisplaySelect.value = getPrimaryTimeDisplay();
     elements.defaultTimeFormatSelect.value = getDefaultTimeFormat();
+    updateFinishSoundVolumeSetting();
     elements.backupStatus.textContent = "";
     elements.backupStatus.classList.remove("is-error");
     updatePopupSizeSettings();
@@ -1130,6 +1136,17 @@
 
   function getPrimaryTimeDisplay() {
     return localStorage.getItem(PRIMARY_TIME_DISPLAY_KEY) === "clock" ? "clock" : "measurement";
+  }
+
+  function getFinishSoundVolume() {
+    const savedVolume = Number.parseInt(localStorage.getItem(FINISH_SOUND_VOLUME_KEY) || "50", 10);
+    return Number.isFinite(savedVolume) ? clamp(savedVolume, 0, 100) : 50;
+  }
+
+  function updateFinishSoundVolumeSetting() {
+    const volume = getFinishSoundVolume();
+    elements.finishSoundVolumeInput.value = String(volume);
+    elements.finishSoundVolumeValue.textContent = `${volume}%`;
   }
 
   function togglePrimaryTimeDisplay() {
@@ -1246,6 +1263,12 @@
     if (backup.storage[PRIMARY_TIME_DISPLAY_KEY] !== null &&
         !["measurement", "clock"].includes(backup.storage[PRIMARY_TIME_DISPLAY_KEY])) {
       throw new Error("バックアップ内の時間表示設定が正しくありません。");
+    }
+    if (backup.storage[FINISH_SOUND_VOLUME_KEY] !== null) {
+      const volume = Number(backup.storage[FINISH_SOUND_VOLUME_KEY]);
+      if (!Number.isFinite(volume) || volume < 0 || volume > 100) {
+        throw new Error("バックアップ内の終了音量設定が正しくありません。");
+      }
     }
   }
 
@@ -2166,12 +2189,18 @@
 
   function playFinishSound() {
     try {
+      const volume = getFinishSoundVolume();
+      if (volume <= 0) return;
       audioContext = audioContext || new AudioContext();
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
+      const relativeVolume = volume <= 50
+        ? volume / 50
+        : 1 + ((volume - 50) / 50) * 9;
+      const peakGain = 0.08 * relativeVolume;
       oscillator.frequency.value = 880;
       gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.08, audioContext.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(peakGain, audioContext.currentTime + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.35);
       oscillator.connect(gain); gain.connect(audioContext.destination);
       oscillator.start(); oscillator.stop(audioContext.currentTime + 0.38);
@@ -3416,6 +3445,18 @@
     });
     elements.defaultTimeFormatSelect.addEventListener("change", () => {
       setSharedTimeFormat(elements.defaultTimeFormatSelect.value, { saveDefault: true, notify: true });
+    });
+    elements.finishSoundVolumeInput.addEventListener("input", () => {
+      const volume = clamp(Number(elements.finishSoundVolumeInput.value), 0, 100);
+      localStorage.setItem(FINISH_SOUND_VOLUME_KEY, String(volume));
+      elements.finishSoundVolumeValue.textContent = `${volume}%`;
+    });
+    elements.previewFinishSoundButton.addEventListener("click", () => {
+      if (getFinishSoundVolume() <= 0) {
+        showToast("終了音の音量は0%です");
+        return;
+      }
+      playFinishSound();
     });
     elements.timeDisplayArea.addEventListener("click", togglePrimaryTimeDisplay);
     elements.timeDisplay.addEventListener("click", (event) => {

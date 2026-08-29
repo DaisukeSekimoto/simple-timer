@@ -274,6 +274,12 @@
               <option value="dark">ダーク</option>
             </select>
           </label>
+          <h3 id="finish-sound-volume-title">カウントダウン0秒時の音量</h3>
+          <div class="finish-sound-volume-setting" aria-labelledby="finish-sound-volume-title">
+            <input id="finish-sound-volume-input" type="range" min="0" max="100" step="5" value="50" aria-labelledby="finish-sound-volume-title">
+            <output id="finish-sound-volume-value" for="finish-sound-volume-input">50%</output>
+            <button id="preview-finish-sound-button" class="secondary-button" type="button">試聴</button>
+          </div>
           <h3 id="popup-size-settings-title">ピクチャーインピクチャーのサイズ</h3>
           <p class="settings-description">各表示状態でウィンドウのサイズを変更すると、次回からそのサイズで開きます。</p>
           <div class="settings-table-wrap">
