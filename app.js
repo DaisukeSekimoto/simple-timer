@@ -129,6 +129,8 @@
     manualRecentTaskList: document.querySelector("#manual-recent-task-list"),
     historyDialog: document.querySelector("#history-dialog"),
     historyDate: document.querySelector("#history-date"),
+    historyDateInput: document.querySelector("#history-date-input"),
+    historyDatePickerField: document.querySelector("#history-date-picker-field"),
     historyDateContext: document.querySelector("#history-date-context"),
     historyHelp: document.querySelector("#history-help"),
     historyList: document.querySelector("#history-list"),
@@ -1088,6 +1090,7 @@
   }
 
   function disablePastHistoryEditing(notify = false) {
+    const selectedDate = elements.historyDate.value;
     pastHistoryEditUnlockedUntil = 0;
     window.clearTimeout(pastHistoryEditTimeoutId);
     pastHistoryEditTimeoutId = 0;
@@ -1095,7 +1098,13 @@
     if (editingRecord && editingRecord.date !== localDateKey() && elements.editHistoryDialog.open) {
       elements.editHistoryDialog.close();
     }
-    if (elements.historyDialog.open) renderHistory();
+    if (elements.addHistoryDialog.open && elements.manualDate.value !== localDateKey()) {
+      elements.addHistoryDialog.close();
+    }
+    if (elements.historyDialog.open) {
+      renderHistoryDateOptions(selectedDate);
+      renderHistory();
+    }
     if (elements.workSummaryDialog.open) renderWorkSummary();
     if (notify) showToast("過去の履歴編集をOFFにしました");
   }
@@ -1105,7 +1114,10 @@
     window.clearTimeout(pastHistoryEditTimeoutId);
     pastHistoryEditTimeoutId = window.setTimeout(() => disablePastHistoryEditing(true), 5 * 60 * 1000);
     updatePastHistoryEditSetting();
-    if (elements.historyDialog.open) renderHistory();
+    if (elements.historyDialog.open) {
+      renderHistoryDateOptions(elements.historyDate.value);
+      renderHistory();
+    }
     if (elements.workSummaryDialog.open) renderWorkSummary();
     showToast("過去の履歴編集を5分間許可しました");
   }
@@ -2346,6 +2358,12 @@
 
   function renderHistory() {
     const selectedDate = elements.historyDate.value;
+    elements.historyDatePickerField.hidden = !isPastHistoryEditUnlocked();
+    elements.historyDatePickerField.parentElement.classList.toggle(
+      "is-calendar-enabled", isPastHistoryEditUnlocked(),
+    );
+    elements.historyDateInput.max = localDateKey();
+    elements.historyDateInput.value = selectedDate;
     const isViewingToday = selectedDate === localDateKey();
     const canEdit = canEditHistoryDate(selectedDate);
     const keepCurrentDraft = dailyMemoEditingDate === selectedDate && dailyMemoDirty;
@@ -2354,14 +2372,15 @@
     }
     const records = state.records.filter((record) => record.date === selectedDate);
     elements.historyDialog.classList.toggle("is-viewing-past", !isViewingToday);
+    elements.historyDialog.classList.toggle("is-editing-past", !isViewingToday && canEdit);
     elements.historyDateContext.hidden = isViewingToday;
     elements.historyDateContext.textContent = canEdit
-      ? "過去の履歴（編集許可中・5分後に自動OFF）"
+      ? "過去の履歴（編集許可中）"
       : "過去の履歴（参照のみ）";
     elements.historyHelp.textContent = canEdit
       ? "各記録をクリックすると内容の変更・削除ができます。"
       : "各記録をクリックすると詳細を確認できます。変更・削除は設定から5分間だけ許可できます。";
-    elements.addHistoryButton.hidden = !isViewingToday;
+    elements.addHistoryButton.hidden = !canEdit;
     dailyMemoEditingDate = elements.historyDate.value;
     if (!keepCurrentDraft) elements.dailyMemoInput.value = dailyMemos[elements.historyDate.value] || "";
     elements.dailyMemoInput.readOnly = !canEdit;
@@ -2635,8 +2654,16 @@
 
   function renderHistoryDateOptions(preferredDate = elements.historyDate.value) {
     const today = localDateKey();
+    const storedDates = new Set([
+      ...state.records.map((record) => record.date),
+      ...Object.keys(dailyMemos),
+      ...Object.keys(workdayTimes),
+    ]);
+    const canSelectPreferredDate = isPastHistoryEditUnlocked() &&
+      /^\d{4}-\d{2}-\d{2}$/.test(preferredDate) && preferredDate <= today;
     const availableDates = [...new Set([
       today,
+      ...(canSelectPreferredDate ? [preferredDate] : []),
       ...state.records.map((record) => record.date),
       ...Object.keys(dailyMemos),
       ...Object.keys(workdayTimes),
@@ -2646,10 +2673,18 @@
     availableDates.forEach((date) => {
       const option = document.createElement("option");
       option.value = date;
-      option.textContent = formatHistoryDateLabel(date);
+      option.textContent = !storedDates.has(date) && date !== today
+        ? `${formatHistoryDateLabel(date)}（未登録）`
+        : formatHistoryDateLabel(date);
       elements.historyDate.append(option);
     });
     elements.historyDate.value = availableDates.includes(preferredDate) ? preferredDate : today;
+    elements.historyDateInput.max = today;
+    elements.historyDateInput.value = elements.historyDate.value;
+    elements.historyDatePickerField.hidden = !isPastHistoryEditUnlocked();
+    elements.historyDatePickerField.parentElement.classList.toggle(
+      "is-calendar-enabled", isPastHistoryEditUnlocked(),
+    );
   }
 
   function saveDailyMemoNow(showFeedback = true) {
@@ -2920,7 +2955,8 @@
   }
 
   function openAddHistoryDialog() {
-    elements.manualDate.value = localDateKey();
+    const selectedDate = elements.historyDialog.open ? elements.historyDate.value : localDateKey();
+    elements.manualDate.value = canEditHistoryDate(selectedDate) ? selectedDate : localDateKey();
     elements.manualTaskInput.value = "";
     elements.manualMemoInput.value = "";
     elements.manualHoursInput.value = "0";
@@ -3010,7 +3046,7 @@
     const durationInputs = isManual
       ? [elements.manualHoursInput, elements.manualMinutesInput, elements.manualSecondsInput]
       : [elements.editHoursInput, elements.editMinutesInput, elements.editSecondsInput];
-    const recordDate = isManual ? localDateKey() : editingRecord?.date;
+    const recordDate = isManual ? elements.manualDate.value : editingRecord?.date;
     const nextDurationMs = calculateTimeRangeDuration(recordDate, timeInputs[0].value, timeInputs[1].value);
     if (nextDurationMs === null) return;
     const enteredDurationMs = readDurationInputValues(durationInputs);
@@ -3073,7 +3109,11 @@
   function addManualHistory(event) {
     event.preventDefault();
     const taskName = resolveTaskName(elements.manualTaskInput.value);
-    const recordDate = localDateKey();
+    const recordDate = elements.manualDate.value;
+    if (!canEditHistoryDate(recordDate)) {
+      elements.manualHistoryError.textContent = "この日付の履歴編集は許可されていません";
+      return;
+    }
     const timeRange = parseHistoryTimeRange(
       recordDate,
       elements.manualStartTimeInput.value,
@@ -3093,7 +3133,10 @@
       return;
     }
     const save = (durationMs) => {
-      const addedAt = timeRange ? timeRange.endDate.getTime() : now();
+      const selectedDateCurrentTime = new Date(`${recordDate}T${formatTimeInputValue(new Date())}`).getTime();
+      const addedAt = timeRange
+        ? timeRange.endDate.getTime()
+        : Number.isFinite(selectedDateCurrentTime) ? selectedDateCurrentTime : now();
       const record = {
         id: `${addedAt}-${Math.random().toString(16).slice(2)}`,
         date: recordDate,
@@ -3623,6 +3666,12 @@
       if (isDeleteConfirmOpen()) closeDeleteConfirm();
     });
     elements.historyDate.addEventListener("change", renderHistory);
+    elements.historyDateInput.addEventListener("change", () => {
+      const selectedDate = elements.historyDateInput.value;
+      if (!isPastHistoryEditUnlocked() || !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) return;
+      renderHistoryDateOptions(selectedDate);
+      renderHistory();
+    });
     elements.dailyMemoInput.addEventListener("input", scheduleDailyMemoSave);
     elements.clockInInput.addEventListener("change", () => saveWorkSummaryTimes({ applyDefaultBreak: true }));
     elements.clockOutInput.addEventListener("change", () => saveWorkSummaryTimes({ applyDefaultBreak: true }));

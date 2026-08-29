@@ -407,10 +407,16 @@
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <div class="history-filters">
-          <label class="dialog-field">
-            <span>日付</span>
-            <select id="history-date"></select>
-          </label>
+          <div class="history-date-fields">
+            <label class="dialog-field">
+              <span>登録済み・選択中の日付</span>
+              <select id="history-date"></select>
+            </label>
+            <label id="history-date-picker-field" class="dialog-field" hidden>
+              <span>カレンダーから選択</span>
+              <input id="history-date-input" type="date" aria-label="履歴の日付を選択">
+            </label>
+          </div>
           <div class="unit-toggle" role="group" aria-label="時間の表示形式">
             <button class="unit-button is-active" type="button" data-unit="minutes">mm表記</button>
             <button class="unit-button" type="button" data-unit="clock">hh:mm:ss表記</button>
@@ -428,7 +434,7 @@
         <div id="history-list" class="history-list" aria-live="polite"></div>
         <p class="history-time-help">時間帯は「最初の計測開始時刻～履歴追加時刻」を表示しています。</p>
         <div class="history-actions">
-          <button id="add-history-button" class="primary-button" type="button">作業履歴を追加<br>（当日のみ）</button>
+          <button id="add-history-button" class="primary-button" type="button">作業履歴を追加</button>
           <button id="export-history-button" class="secondary-button" type="button">全履歴をTXT出力</button>
         </div>
         <div id="confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-title">
@@ -598,7 +604,7 @@
     <dialog id="add-history-dialog" class="modal">
       <form id="add-history-form" class="modal-card">
         <div class="modal-header">
-          <h2>作業履歴を追加（当日のみ）</h2>
+          <h2>作業履歴を追加</h2>
           <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
         </div>
         <label class="dialog-field">

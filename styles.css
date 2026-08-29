@@ -1175,6 +1175,20 @@ kbd {
   gap: 12px;
 }
 
+.history-date-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.history-date-fields.is-calendar-enabled {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.history-date-fields > [hidden] {
+  display: none;
+}
+
 .unit-toggle {
   display: flex;
   min-height: 42px;
@@ -1682,7 +1696,7 @@ kbd {
   color: var(--muted);
 }
 
-#history-dialog.is-viewing-past .history-actions {
+#history-dialog.is-viewing-past:not(.is-editing-past) .history-actions {
   grid-template-columns: 1fr;
 }
 
@@ -2131,6 +2145,10 @@ kbd {
   }
 
   .history-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .history-date-fields.is-calendar-enabled {
     grid-template-columns: 1fr;
   }
 

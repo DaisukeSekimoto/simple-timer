@@ -1,4 +1,4 @@
-const CACHE_NAME = "simple-timer-v65";
+const CACHE_NAME = "simple-timer-v69";
 const APP_SHELL = [
   "./",
   "./index.html",
