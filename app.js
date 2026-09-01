@@ -137,6 +137,8 @@
     historySummary: document.querySelector("#history-summary"),
     taskMemoDialog: document.querySelector("#task-memo-dialog"),
     taskMemoTitle: document.querySelector("#task-memo-title"),
+    taskMemoCount: document.querySelector("#task-memo-count"),
+    taskMemoTotal: document.querySelector("#task-memo-total"),
     taskMemoList: document.querySelector("#task-memo-list"),
     workSummaryDialog: document.querySelector("#work-summary-dialog"),
     workSummaryDate: document.querySelector("#work-summary-date"),
@@ -282,6 +284,9 @@
   let pastHistoryEditTimeoutId = 0;
   let pendingUntilPomodoroPlan = null;
   let pendingBackupImport = null;
+  let activeTaskMemoName = "";
+  let activeTaskMemoRecords = [];
+  const timeInputsPendingPicker = new WeakSet();
 
   function localDateKey(date = new Date()) {
     const year = date.getFullYear();
@@ -815,6 +820,7 @@
     }
     if (elements.historyDialog.open) renderHistory();
     if (elements.workSummaryDialog.open) renderWorkSummary();
+    if (elements.taskMemoDialog.open) renderTaskMemoDialog();
     if (notify) showToast(normalizedUnit === "clock" ? "時間表記のデフォルトをhh:mm:ssに変更しました" : "時間表記のデフォルトを分に変更しました");
   }
 
@@ -2542,20 +2548,33 @@
     return table;
   }
 
-  function openTaskMemoDialog(taskName, records, unit = state.historyUnit) {
-    elements.taskMemoTitle.textContent = `${taskName}のメモ`;
+  function renderTaskMemoDialog() {
+    elements.taskMemoTitle.textContent = `${activeTaskMemoName}のメモ`;
+    elements.taskMemoCount.textContent = `${activeTaskMemoRecords.length}件`;
+    const totalDurationMs = activeTaskMemoRecords.reduce((total, record) => total + record.durationMs, 0);
+    const totalText = formatDurationForUnit(totalDurationMs, workSummaryUnit);
+    elements.taskMemoTotal.textContent = `合計 ${totalText}`;
+    elements.taskMemoTotal.setAttribute("aria-label", `合計 ${totalText}。クリックして時間表記を切り替え`);
     elements.taskMemoList.replaceChildren();
-    records.slice().sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).forEach((record) => {
+    activeTaskMemoRecords.slice().sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).forEach((record) => {
       const item = document.createElement("article");
       item.className = "task-memo-item";
       const meta = document.createElement("strong");
-      meta.textContent = `${formatHistoryTimeRange(record) || record.date} ／ ${formatDurationForUnit(record.durationMs, unit)}`;
+      meta.textContent = `${formatHistoryTimeRange(record) || record.date} ／ ${formatDurationForUnit(record.durationMs, workSummaryUnit)}`;
       const memo = document.createElement("p");
       memo.textContent = record.memo || "メモはありません";
       memo.classList.toggle("is-empty", !record.memo);
       item.append(meta, memo);
       elements.taskMemoList.append(item);
     });
+  }
+
+  function openTaskMemoDialog(taskName, records, unit = state.historyUnit) {
+    activeTaskMemoName = taskName;
+    activeTaskMemoRecords = records.slice();
+    workSummaryUnit = unit === "clock" ? "clock" : "minutes";
+    state.historyUnit = workSummaryUnit;
+    renderTaskMemoDialog();
     elements.taskMemoDialog.showModal();
   }
 
@@ -3074,6 +3093,24 @@
       .join(":");
   }
 
+  function fillCurrentTimeIfEmpty(input) {
+    if (input.disabled || input.readOnly || input.value) return;
+    input.value = formatTimeInputValue(new Date());
+    const view = input.ownerDocument.defaultView || window;
+    input.dispatchEvent(new view.Event("input", { bubbles: true }));
+  }
+
+  function openTimePicker(input) {
+    if (input.disabled || input.readOnly) return;
+    input.focus({ preventScroll: true });
+    if (typeof input.showPicker !== "function") return;
+    try {
+      input.showPicker();
+    } catch {
+      // ブラウザ側で時刻選択UIが既に開いている場合は、そのまま利用する。
+    }
+  }
+
   function parseHistoryTimeRange(recordDate, startTime, endTime, errorElement) {
     if (!startTime && !endTime) return false;
     if (!startTime || !endTime) {
@@ -3350,7 +3387,7 @@
     const hasOpenConfirmation = isResetConfirmOpen() || isTimerNavigationConfirmOpen() ||
       isModeSwitchConfirmOpen() || isTimerTabConfirmOpen() || isDeleteConfirmOpen();
     if (event.ctrlKey && !event.altKey && !event.shiftKey && key === "enter") {
-      const form = event.target.closest?.("#task-dialog-form, #edit-history-form");
+      const form = event.target.closest?.("#task-dialog-form, #add-history-form, #edit-history-form");
       if (form) {
         event.preventDefault();
         form.requestSubmit();
@@ -3699,8 +3736,33 @@
     elements.unitButtons.forEach((button) => button.addEventListener("click", () => {
       setSharedTimeFormat(button.dataset.unit);
     }));
+    elements.taskMemoTotal.addEventListener("click", () => {
+      setSharedTimeFormat(workSummaryUnit === "minutes" ? "clock" : "minutes");
+    });
+    elements.taskMemoDialog.addEventListener("close", () => {
+      activeTaskMemoName = "";
+      activeTaskMemoRecords = [];
+    });
     elements.addHistoryButton.addEventListener("click", openAddHistoryDialog);
     elements.addHistoryForm.addEventListener("submit", addManualHistory);
+    [
+      elements.manualStartTimeInput,
+      elements.manualEndTimeInput,
+      elements.editStartTimeInput,
+      elements.editEndTimeInput,
+    ].forEach((input) => {
+      input.addEventListener("pointerdown", () => {
+        timeInputsPendingPicker.delete(input);
+        if (!input.disabled && !input.readOnly && !input.value) {
+          timeInputsPendingPicker.add(input);
+          fillCurrentTimeIfEmpty(input);
+        }
+      });
+      input.addEventListener("focus", () => fillCurrentTimeIfEmpty(input));
+      input.addEventListener("click", () => {
+        if (timeInputsPendingPicker.delete(input)) openTimePicker(input);
+      });
+    });
     [elements.manualStartTimeInput, elements.manualEndTimeInput]
       .forEach((input) => input.addEventListener("input", () => syncDurationAfterTimeRangeChange("manual")));
     [elements.editStartTimeInput, elements.editEndTimeInput]

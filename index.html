@@ -328,7 +328,7 @@
               <tbody>
                 <tr>
                   <th scope="row"><kbd>Ctrl</kbd>＋<kbd>Enter</kbd></th>
-                  <td>タスク・メモ入力を開く／入力・履歴編集を確定</td>
+                  <td>タスク・メモ入力を開く／入力・履歴追加・履歴編集を確定</td>
                 </tr>
                 <tr>
                   <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>T</kbd></th>
@@ -460,7 +460,13 @@
             <h2 id="task-memo-title">タスクのメモ</h2>
             <p class="history-help">選択したタスクの記録とメモをまとめて表示します。</p>
           </div>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+          <div class="task-memo-header-actions">
+            <div class="task-memo-summary" aria-label="タスクの集計">
+              <span id="task-memo-count">0件</span>
+              <button id="task-memo-total" type="button" title="クリックして時間表記を切り替え">合計 0分</button>
+            </div>
+            <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+          </div>
         </div>
         <div id="task-memo-list" class="task-memo-list"></div>
       </section>
