@@ -1,0 +1,14 @@
+stages:
+  - deploy
+
+deploy-pages:
+  stage: deploy
+
+  script:
+    - echo "Deploy GitLab Pages"
+
+  pages:
+    publish: .
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "pages"'
