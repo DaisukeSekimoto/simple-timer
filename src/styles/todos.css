@@ -1,0 +1,52 @@
+#todo-form {
+  display: grid;
+  gap: 12px;
+}
+
+.todo-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 12px;
+}
+
+.todo-fields .dialog-field {
+  min-width: 0;
+}
+
+.todo-item {
+  align-items: center;
+}
+
+.todo-item strong {
+  overflow-wrap: anywhere;
+}
+
+.todo-item button {
+  flex-shrink: 0;
+  padding: 6px 14px;
+}
+
+@media (max-width: 480px) {
+  .todo-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+#todo-form .history-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+#todo-form .history-actions button {
+  padding: 8px 18px;
+}
+
+.todo-item.is-due-today .history-item-details,
+.todo-item.is-due-today .history-item-meta {
+  color: var(--todo-today);
+}
+
+.todo-item.is-overdue .history-item-details,
+.todo-item.is-overdue .history-item-meta {
+  color: var(--danger);
+}

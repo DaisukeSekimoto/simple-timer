@@ -1,0 +1,41 @@
+.is-measurement-finished {
+  color: var(--danger);
+}
+
+.finish-flash {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: rgba(184, 74, 60, 0.1);
+}
+
+.is-finished .finish-flash {
+  animation: flash 1.1s ease-out 3;
+}
+
+.is-awaiting-stop {
+  border-color: var(--danger);
+  animation: countdown-border-attention 900ms ease-in-out infinite alternate;
+}
+
+.is-measurement-awaiting-stop {
+  color: var(--danger);
+  animation: countdown-text-attention 900ms ease-in-out infinite alternate;
+}
+
+#time-display.is-measurement-awaiting-stop {
+  width: 100%;
+  font-size: clamp(2.65rem, 14vw, 4.15rem);
+  text-align: center;
+}
+
+.is-awaiting-stop .finish-flash {
+  animation: countdown-flash-attention 900ms ease-in-out infinite alternate;
+}
+
+.is-awaiting-stop.is-overtime-background {
+  animation:
+    countdown-border-attention 900ms ease-in-out infinite alternate,
+    countdown-background-attention 900ms ease-in-out infinite alternate;
+}

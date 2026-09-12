@@ -1,0 +1,209 @@
+import { test, expect } from "@playwright/test";
+
+async function openApp(page) {
+  await page.goto("./");
+  await expect(page.locator("#start-pause-button")).toHaveText("開始");
+}
+async function addTodo(page, text, date = "") {
+  await page.locator("#todo-text").fill(text);
+  await page.locator("#todo-due").fill(date);
+  await page.locator("#todo-form button[type=submit]").click();
+}
+
+test("startup, Todo dates, deletion, theme and refresh", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.clock.setFixedTime(new Date("2026-09-12T12:00:00+09:00"));
+  await openApp(page);
+  await page.locator("#todo-button").click();
+  await addTodo(page, "今日のTodo", "2026-09-12");
+  await addTodo(page, "期限超過", "2026-09-11");
+  await addTodo(page, "期限なし");
+  await expect(page.locator(".todo-item.is-due-today")).toContainText(
+    "今日のTodo",
+  );
+  await expect(page.locator(".todo-item.is-overdue")).toContainText("期限超過");
+  await expect(page.locator(".todo-item")).toHaveCount(3);
+  await page.reload();
+  await page.locator("#todo-button").click();
+  await expect(page.locator(".todo-item")).toHaveCount(3);
+  await page
+    .getByRole("button", { name: "期限超過を削除", exact: true })
+    .click();
+  await expect(page.locator(".todo-item")).toHaveCount(2);
+  await page.locator("#close-todo-button").click();
+  await page.locator("#settings-button").click();
+  await page.locator("#theme-select").selectOption("dark");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(errors).toEqual([]);
+});
+
+test("independent browser tabs keep Todo additions and paused timer state", async ({
+  page,
+  context,
+}) => {
+  const errors = [];
+  context.on("page", (p) => p.on("pageerror", (e) => errors.push(e.message)));
+  await openApp(page);
+  const other = await context.newPage();
+  await openApp(other);
+  await page.locator("#todo-button").click();
+  await other.locator("#todo-button").click();
+  await Promise.all([addTodo(page, "Aから追加"), addTodo(other, "Bから追加")]);
+  await expect(page.locator(".todo-item")).toHaveCount(2);
+  await expect(other.locator(".todo-item")).toHaveCount(2);
+  await page.locator("#close-todo-button").click();
+  await other.locator("#close-todo-button").click();
+  await page.locator("#task-button").click();
+  await page.locator("#task-input").fill("タブA");
+  await page
+    .locator("#task-dialog-form")
+    .evaluate((form) => form.requestSubmit());
+  await page.locator("#start-pause-button").click();
+  await expect(page.locator("#start-pause-button")).toHaveText("一時停止");
+  await page.locator("#start-pause-button").click();
+  await other.locator("#task-button").click();
+  await other.locator("#task-input").fill("タブB");
+  await other
+    .locator("#task-dialog-form")
+    .evaluate((form) => form.requestSubmit());
+  await page.reload();
+  await expect(page.locator("#task-name-display")).toHaveText("タブA");
+  await expect(other.locator("#task-name-display")).toHaveText("タブB");
+  expect(errors).toEqual([]);
+});
+
+test("history manual add, edit, memo, summary and backup roundtrip", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openApp(page);
+  await page.locator("#history-button").click();
+  await page.locator("#add-history-button").click();
+  await page.locator("#manual-task-input").fill("リファクタリング");
+  await page.locator("#manual-minutes-input").fill("10");
+  await page
+    .locator("#add-history-form")
+    .evaluate((form) => form.requestSubmit());
+  await expect(page.locator("#history-list .history-item")).toHaveCount(1);
+  await page.locator("#history-list .history-item").click();
+  await page.locator("#edit-task-input").fill("編集済み");
+  await page
+    .locator("#edit-history-form")
+    .evaluate((form) => form.requestSubmit());
+  await expect(page.locator("#history-list")).toContainText("編集済み");
+  await page.locator("#history-summary").click();
+  await page.locator("#clock-in-input").fill("09:00");
+  await page.locator("#clock-out-input").fill("18:00");
+  await page.locator("#clock-out-input").blur();
+  await expect(page.locator("#work-summary-task-table")).toContainText(
+    "編集済み",
+  );
+  await expect(page.locator("#break-time-input")).toHaveValue("01:00");
+  await page.locator("#work-summary-dialog .close-dialog").click();
+  await page.locator("#daily-memo-input").fill("今日のメモ");
+  await expect(page.locator("#daily-memo-status")).toHaveText("保存しました");
+  await page.locator("#history-dialog .close-dialog").click();
+  await page.locator("#settings-button").click();
+  page.on("dialog", (dialog) => dialog.accept());
+  const downloadPromise = page.waitForEvent("download");
+  await page.locator("#backup-export-button").click();
+  const download = await downloadPromise;
+  const filepath = await download.path();
+  await page.locator("#backup-file-input").setInputFiles(filepath);
+  await page.locator("#merge-backup-import-button").click();
+  await expect(page.locator("#start-pause-button")).toHaveText("開始");
+  await page.locator("#history-button").click();
+  await expect(page.locator("#history-list")).toContainText("編集済み");
+  await expect(page.locator("#daily-memo-input")).toHaveValue("今日のメモ");
+  expect(errors).toEqual([]);
+});
+
+test("CSP blocks script connections and offline reload still starts", async ({
+  page,
+  context,
+}) => {
+  await openApp(page);
+  expect(
+    await page.evaluate(async () => {
+      try {
+        await fetch("/blocked-connection");
+        return false;
+      } catch {
+        return true;
+      }
+    }),
+  ).toBe(true);
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.reload();
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.locator("#start-pause-button")).toHaveText("開始");
+  await page.locator("#todo-button").click();
+  await addTodo(page, "オフラインTodo");
+  await expect(page.locator("#todo-list")).toContainText("オフラインTodo");
+});
+
+test("countdown recording and history resume update the original record", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.clock.install({ time: new Date("2026-09-12T12:00:00+09:00") });
+  await openApp(page);
+  await page.locator("#task-button").click();
+  await page.locator("#task-input").fill("計測から記録");
+  await page
+    .locator("#task-dialog-form")
+    .evaluate((form) => form.requestSubmit());
+  await page.locator("#countdown-duration-button").click();
+  await page.locator("#minutes-input").fill("2");
+  await page
+    .locator("#countdown-duration-form")
+    .evaluate((form) => form.requestSubmit());
+  await expect(page.locator("#time-display")).toHaveText("00:02:00");
+  await page.locator("#start-pause-button").click();
+  await page.clock.fastForward(60000);
+  await page.locator("#start-pause-button").click();
+  await page.locator("#next-task-button").click();
+  await page.locator("#history-button").click();
+  await expect(page.locator("#history-list .history-item")).toHaveCount(1);
+  await expect(page.locator("#history-list")).toContainText("1分");
+  await page.locator("#history-list .history-item").click();
+  await page.locator("#resume-history-button").click();
+  await page.locator("#confirm-resume-history-button").click();
+  await expect(page.locator("#history-resume-indicator")).toBeVisible();
+  await page.clock.fastForward(30000);
+  await page.locator("#start-pause-button").click();
+  await page.locator("#next-task-button").click();
+  await page.locator("#history-button").click();
+  await expect(page.locator("#history-list .history-item")).toHaveCount(1);
+  await expect(page.locator("#history-list")).toContainText("計測から記録");
+  expect(errors).toEqual([]);
+});
+
+test("popup uses the bundled stylesheet and can register a Todo", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(window, "documentPictureInPicture", {
+      value: undefined,
+      configurable: true,
+    }),
+  );
+  await openApp(page);
+  const popupPromise = page.waitForEvent("popup");
+  await page.locator("#popup-button").click();
+  const popup = await popupPromise;
+  await expect(popup.locator("body")).toHaveClass(/is-popup/);
+  await expect(popup.locator("link[rel=stylesheet]")).toHaveAttribute(
+    "href",
+    "./assets/styles.css",
+  );
+  await popup.locator("#todo-button").click();
+  await addTodo(popup, "小窓から追加");
+  await expect(popup.locator("#todo-list")).toContainText("小窓から追加");
+});

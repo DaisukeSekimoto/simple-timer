@@ -1,0 +1,153 @@
+.work-summary-card {
+  gap: 10px;
+}
+
+.work-summary-header > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.work-summary-unit-toggle {
+  min-height: 36px;
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+
+.work-summary-unit-button {
+  min-width: 0;
+  padding-inline: 7px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.work-summary-input-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.45fr) minmax(180px, 0.85fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.work-summary-input-grid fieldset {
+  height: 100%;
+  gap: 6px;
+  padding: 6px 9px 9px;
+}
+
+.work-summary-input-grid legend {
+  padding-inline: 4px;
+  font-size: 0.72rem;
+}
+
+.work-summary-input-grid .time-inputs input {
+  min-height: 34px;
+  padding: 4px 6px;
+  font-size: 0.9rem;
+}
+
+.work-summary-input-grid .time-inputs span {
+  font-size: 0.7rem;
+}
+
+.work-summary-input-grid .manual-time-range-separator {
+  padding-bottom: 8px;
+}
+
+.work-summary-input-grid .manual-time-range-inputs,
+.work-summary-input-grid .work-break-inputs {
+  width: 100%;
+}
+
+.work-time-settings .time-inputs label,
+.work-time-settings .time-inputs input,
+.work-break-settings .time-inputs label,
+.work-break-settings .time-inputs input {
+  min-width: 0;
+}
+
+.work-break-inputs {
+  width: min(100%, 260px);
+  grid-template-columns: minmax(0, 1fr);
+  justify-self: center;
+  margin-inline: auto;
+}
+
+.work-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.work-summary-metrics div {
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  text-align: center;
+  background: var(--subtle-soft);
+}
+
+.work-summary-metrics dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.work-summary-metrics dd {
+  margin: 5px 0 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.work-summary-metrics dd.is-negative {
+  color: var(--danger);
+}
+
+.work-summary-metrics dd.is-positive {
+  color: var(--break-text);
+}
+
+.work-summary-card .daily-memo-status.is-error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.work-summary-subtitle {
+  margin: 0 0 7px;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 620px) {
+  .work-summary-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .work-summary-header {
+    gap: 6px;
+  }
+
+  .work-summary-header > div:first-child .history-help {
+    display: none;
+  }
+
+  .work-summary-unit-button {
+    padding-inline: 5px;
+    font-size: 0.65rem;
+  }
+
+  .work-summary-input-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .work-summary-card {
+    padding: 14px;
+  }
+
+  .work-summary-metrics {
+    grid-template-columns: 1fr;
+  }
+}

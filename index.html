@@ -1,14 +1,19 @@
 <!doctype html>
 <html lang="ja">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light dark">
-    <meta name="theme-color" content="#176b57">
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#176b57" />
     <title>Simple Timer</title>
-    <link rel="manifest" href="./manifest.webmanifest">
-    <link rel="icon" href="./icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./styles.css">
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./assets/styles.css" />
   </head>
   <body>
     <main class="app" aria-labelledby="app-title">
@@ -19,15 +24,52 @@
           <p id="status-text" class="status-text" aria-live="polite">待機中</p>
         </div>
         <div class="window-actions">
-          <button id="history-button" class="secondary-button header-button" type="button">履歴</button>
-          <button id="settings-button" class="icon-button" type="button" aria-label="設定" title="設定">
+          <button
+            id="todo-button"
+            class="secondary-button header-button"
+            type="button"
+          >
+            Todo
+          </button>
+          <button
+            id="history-button"
+            class="secondary-button header-button"
+            type="button"
+          >
+            履歴
+          </button>
+          <button
+            id="settings-button"
+            class="icon-button"
+            type="button"
+            aria-label="設定"
+            title="設定"
+          >
             <span aria-hidden="true">⚙</span>
           </button>
-          <button id="compact-start-pause-button" class="primary-button compact-start-pause-button" type="button">開始</button>
-          <button id="minimize-button" class="icon-button minimize-button" type="button" aria-label="最小化" title="最小化">
+          <button
+            id="compact-start-pause-button"
+            class="primary-button compact-start-pause-button"
+            type="button"
+          >
+            開始
+          </button>
+          <button
+            id="minimize-button"
+            class="icon-button minimize-button"
+            type="button"
+            aria-label="最小化"
+            title="最小化"
+          >
             <span aria-hidden="true">−</span>
           </button>
-          <button id="popup-button" class="icon-button" type="button" aria-label="小窓で開く" title="小窓で開く">
+          <button
+            id="popup-button"
+            class="icon-button"
+            type="button"
+            aria-label="小窓で開く"
+            title="小窓で開く"
+          >
             <span aria-hidden="true">□</span>
           </button>
         </div>
@@ -35,26 +77,74 @@
 
       <nav class="timer-workspace-tabs" aria-label="タイマー一覧">
         <div id="timer-tab-list" class="timer-tab-list" role="tablist"></div>
-        <button id="add-timer-tab-button" class="add-timer-tab-button" type="button" aria-label="タイマーを追加" title="タイマーを追加">＋</button>
+        <button
+          id="add-timer-tab-button"
+          class="add-timer-tab-button"
+          type="button"
+          aria-label="タイマーを追加"
+          title="タイマーを追加"
+        >
+          ＋
+        </button>
       </nav>
 
       <section id="timer-panel" class="timer-panel" aria-label="タイマー">
         <div class="mode-tabs" role="tablist" aria-label="モード">
-          <button id="countdown-tab" class="mode-tab is-active" type="button" role="tab" aria-selected="true" data-mode="countdown">
+          <button
+            id="countdown-tab"
+            class="mode-tab is-active"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            data-mode="countdown"
+          >
             カウントダウン
           </button>
-          <button id="stopwatch-tab" class="mode-tab" type="button" role="tab" aria-selected="false" data-mode="stopwatch">
+          <button
+            id="stopwatch-tab"
+            class="mode-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-mode="stopwatch"
+          >
             ストップウォッチ
           </button>
         </div>
 
-        <p id="secondary-time-display" class="secondary-time-display" role="button" tabindex="0" aria-label="大きく表示する時間を入れ替える">現在時間 00:00:00</p>
-        <div id="time-display-area" class="time-display-area" role="button" tabindex="0" aria-label="大きく表示する時間を入れ替える">
-          <div id="time-display" class="time-display" aria-live="off">00:25:00</div>
+        <p
+          id="secondary-time-display"
+          class="secondary-time-display"
+          role="button"
+          tabindex="0"
+          aria-label="大きく表示する時間を入れ替える"
+        >
+          現在時間 00:00:00
+        </p>
+        <div
+          id="time-display-area"
+          class="time-display-area"
+          role="button"
+          tabindex="0"
+          aria-label="大きく表示する時間を入れ替える"
+        >
+          <div id="time-display" class="time-display" aria-live="off">
+            00:25:00
+          </div>
         </div>
         <div id="time-meta-row" class="time-meta-row">
-          <p id="cumulative-time-display" class="cumulative-time-display" role="button" tabindex="0" aria-label="大きく表示する時間を入れ替える">作業時間 00:00:00</p>
-          <p id="pomodoro-phase-display" class="pomodoro-phase-display" hidden>作業</p>
+          <p
+            id="cumulative-time-display"
+            class="cumulative-time-display"
+            role="button"
+            tabindex="0"
+            aria-label="大きく表示する時間を入れ替える"
+          >
+            作業時間 00:00:00
+          </p>
+          <p id="pomodoro-phase-display" class="pomodoro-phase-display" hidden>
+            作業
+          </p>
         </div>
         <div id="finish-flash" class="finish-flash" aria-hidden="true"></div>
 
@@ -70,22 +160,39 @@
           </div>
 
           <fieldset id="countdown-settings" class="countdown-settings">
-            <button id="countdown-duration-button" class="countdown-duration-button" type="button">
+            <button
+              id="countdown-duration-button"
+              class="countdown-duration-button"
+              type="button"
+            >
               <span>作業時間</span>
               <strong id="countdown-duration-display">00:25:00</strong>
               <span>変更</span>
             </button>
             <div class="pomodoro-footer">
-              <div id="pomodoro-break-settings" class="pomodoro-break-settings" aria-hidden="true">
+              <div
+                id="pomodoro-break-settings"
+                class="pomodoro-break-settings"
+                aria-hidden="true"
+              >
                 <label>
                   <span>休憩時間（1回）</span>
-                  <input id="pomodoro-break-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="5" disabled>
+                  <input
+                    id="pomodoro-break-input"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="60"
+                    step="1"
+                    value="5"
+                    disabled
+                  />
                   <span>分</span>
                 </label>
               </div>
               <label class="pomodoro-toggle">
                 <span class="pomodoro-toggle-label">ポモドーロ</span>
-                <input id="pomodoro-enabled-input" type="checkbox">
+                <input id="pomodoro-enabled-input" type="checkbox" />
                 <span class="pomodoro-toggle-track" aria-hidden="true">
                   <span class="pomodoro-toggle-thumb"></span>
                 </span>
@@ -95,593 +202,1275 @@
         </form>
 
         <div class="control-row">
-          <button id="start-pause-button" class="primary-button" type="button">開始</button>
-          <button id="reset-button" class="secondary-button" type="button">リセット</button>
-          <button id="next-task-button" class="secondary-button" type="button">次の作業に移る<br>（履歴へ追加）</button>
+          <button id="start-pause-button" class="primary-button" type="button">
+            開始
+          </button>
+          <button id="reset-button" class="secondary-button" type="button">
+            リセット
+          </button>
+          <button id="next-task-button" class="secondary-button" type="button">
+            次の作業に移る<br />（履歴へ追加）
+          </button>
         </div>
-        <div id="history-resume-indicator" class="history-resume-indicator" hidden>履歴から計測再開中</div>
+        <div
+          id="history-resume-indicator"
+          class="history-resume-indicator"
+          hidden
+        >
+          履歴から計測再開中
+        </div>
       </section>
       <div id="toast" class="toast" role="status" aria-live="polite">
         <span id="toast-message"></span>
         <button id="toast-undo-button" type="button" hidden>元に戻す</button>
       </div>
-      <div id="previous-day-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="previous-day-confirm-title">
+      <div
+        id="previous-day-confirm-overlay"
+        class="confirm-overlay"
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="previous-day-confirm-title"
+      >
         <section class="confirm-card">
-          <h2 id="previous-day-confirm-title">前日分の作業時間が残っています</h2>
+          <h2 id="previous-day-confirm-title">
+            前日分の作業時間が残っています
+          </h2>
           <p id="previous-day-confirm-message" class="confirm-message"></p>
-          <p class="confirm-message">この計測をリセットするか、前日の作業履歴として追加してください。</p>
+          <p class="confirm-message">
+            この計測をリセットするか、前日の作業履歴として追加してください。
+          </p>
           <div class="confirm-actions">
-            <button id="reset-previous-day-button" class="danger-button" type="button">リセット</button>
-            <button id="record-previous-day-button" class="primary-button" type="button">前日の履歴として追加</button>
+            <button
+              id="reset-previous-day-button"
+              class="danger-button"
+              type="button"
+            >
+              リセット
+            </button>
+            <button
+              id="record-previous-day-button"
+              class="primary-button"
+              type="button"
+            >
+              前日の履歴として追加
+            </button>
           </div>
         </section>
       </div>
-      <div id="reset-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="reset-confirm-title">
+      <div
+        id="reset-confirm-overlay"
+        class="confirm-overlay"
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reset-confirm-title"
+      >
         <section class="confirm-card">
           <h2 id="reset-confirm-title">作業時間をリセットしますか？</h2>
           <p id="reset-confirm-message" class="confirm-message"></p>
-          <p class="confirm-message">この作業時間はまだ履歴に追加されていません。</p>
+          <p class="confirm-message">
+            この作業時間はまだ履歴に追加されていません。
+          </p>
           <div class="confirm-actions">
-            <button id="cancel-reset-button" class="secondary-button" type="button">キャンセル</button>
-            <button id="confirm-reset-button" class="danger-button" type="button">履歴に追加せず<br>リセット</button>
+            <button
+              id="cancel-reset-button"
+              class="secondary-button"
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              id="confirm-reset-button"
+              class="danger-button"
+              type="button"
+            >
+              履歴に追加せず<br />リセット
+            </button>
           </div>
         </section>
       </div>
-      <div id="timer-tab-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="timer-tab-confirm-title">
+      <div
+        id="timer-tab-confirm-overlay"
+        class="confirm-overlay"
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="timer-tab-confirm-title"
+      >
         <section class="confirm-card">
-          <h2 id="timer-tab-confirm-title">開始済みのタイマーを削除しますか？</h2>
+          <h2 id="timer-tab-confirm-title">
+            開始済みのタイマーを削除しますか？
+          </h2>
           <p id="timer-tab-confirm-message" class="confirm-message"></p>
           <div class="confirm-actions">
-            <button id="cancel-timer-tab-delete-button" class="secondary-button" type="button">キャンセル</button>
-            <button id="confirm-timer-tab-delete-button" class="danger-button" type="button">削除</button>
+            <button
+              id="cancel-timer-tab-delete-button"
+              class="secondary-button"
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              id="confirm-timer-tab-delete-button"
+              class="danger-button"
+              type="button"
+            >
+              削除
+            </button>
           </div>
         </section>
       </div>
-      <div id="mode-switch-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="mode-switch-confirm-title">
+      <div
+        id="mode-switch-confirm-overlay"
+        class="confirm-overlay"
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mode-switch-confirm-title"
+      >
         <section class="confirm-card">
           <h2 id="mode-switch-confirm-title">モードを切り替えますか？</h2>
           <p id="mode-switch-confirm-message" class="confirm-message"></p>
           <div class="confirm-actions">
-            <button id="cancel-mode-switch-button" class="secondary-button" type="button">キャンセル</button>
-            <button id="confirm-mode-switch-button" class="primary-button" type="button">作業時間を維持して切り替える</button>
+            <button
+              id="cancel-mode-switch-button"
+              class="secondary-button"
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              id="confirm-mode-switch-button"
+              class="primary-button"
+              type="button"
+            >
+              作業時間を維持して切り替える
+            </button>
           </div>
         </section>
       </div>
-      <div id="timer-navigation-confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="timer-navigation-confirm-title">
+      <div
+        id="timer-navigation-confirm-overlay"
+        class="confirm-overlay"
+        hidden
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="timer-navigation-confirm-title"
+      >
         <section class="confirm-card">
           <h2 id="timer-navigation-confirm-title">タイマーが動作中です</h2>
           <p id="timer-navigation-confirm-message" class="confirm-message"></p>
           <div class="confirm-actions">
-            <button id="cancel-timer-navigation-button" class="secondary-button" type="button">キャンセル</button>
-            <button id="confirm-timer-navigation-button" class="primary-button" type="button">一時停止して移動</button>
+            <button
+              id="cancel-timer-navigation-button"
+              class="secondary-button"
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              id="confirm-timer-navigation-button"
+              class="primary-button"
+              type="button"
+            >
+              一時停止して移動
+            </button>
           </div>
         </section>
       </div>
 
-    <dialog id="countdown-duration-dialog" class="modal">
-      <form id="countdown-duration-form" class="modal-card">
-        <div class="modal-header">
-          <h2>カウントダウン時間を設定</h2>
-          <div class="countdown-dialog-header-actions">
-            <label class="pomodoro-toggle countdown-dialog-pomodoro-toggle">
-              <span class="pomodoro-toggle-label">ポモドーロ</span>
-              <input id="countdown-dialog-pomodoro-input" type="checkbox">
-              <span class="pomodoro-toggle-track" aria-hidden="true">
-                <span class="pomodoro-toggle-thumb"></span>
-              </span>
-            </label>
-            <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-          </div>
-        </div>
-        <fieldset class="countdown-settings">
-          <section class="until-time-section" aria-labelledby="until-time-title">
-            <h3 id="until-time-title">何時まで</h3>
-            <div class="until-time-controls">
-              <input id="until-time-input" type="time" step="60" aria-label="終了時刻">
-              <button id="apply-until-time-button" class="secondary-button" type="button">残り時間へ反映</button>
+      <dialog id="countdown-duration-dialog" class="modal">
+        <form id="countdown-duration-form" class="modal-card">
+          <div class="modal-header">
+            <h2>カウントダウン時間を設定</h2>
+            <div class="countdown-dialog-header-actions">
+              <label class="pomodoro-toggle countdown-dialog-pomodoro-toggle">
+                <span class="pomodoro-toggle-label">ポモドーロ</span>
+                <input id="countdown-dialog-pomodoro-input" type="checkbox" />
+                <span class="pomodoro-toggle-track" aria-hidden="true">
+                  <span class="pomodoro-toggle-thumb"></span>
+                </span>
+              </label>
+              <button
+                class="icon-button close-dialog"
+                type="button"
+                aria-label="閉じる"
+              >
+                ×
+              </button>
             </div>
-          </section>
+          </div>
+          <fieldset class="countdown-settings">
+            <section
+              class="until-time-section"
+              aria-labelledby="until-time-title"
+            >
+              <h3 id="until-time-title">何時まで</h3>
+              <div class="until-time-controls">
+                <input
+                  id="until-time-input"
+                  type="time"
+                  step="60"
+                  aria-label="終了時刻"
+                />
+                <button
+                  id="apply-until-time-button"
+                  class="secondary-button"
+                  type="button"
+                >
+                  残り時間へ反映
+                </button>
+              </div>
+            </section>
             <h3 id="countdown-work-duration-legend">作業時間</h3>
             <div class="time-inputs">
               <label>
                 <span>時</span>
-                <input id="hours-input" type="number" inputmode="numeric" min="0" max="99" step="1" value="0">
+                <input
+                  id="hours-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="99"
+                  step="1"
+                  value="0"
+                />
               </label>
               <label>
                 <span>分</span>
-                <input id="minutes-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="25">
+                <input
+                  id="minutes-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="59"
+                  step="1"
+                  value="25"
+                />
               </label>
               <label>
                 <span>秒</span>
-                <input id="seconds-input" type="number" inputmode="numeric" min="0" max="59" step="1" value="0">
+                <input
+                  id="seconds-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  max="59"
+                  step="1"
+                  value="0"
+                />
               </label>
             </div>
-            <div id="until-time-pomodoro-settings" class="until-time-pomodoro-settings" hidden>
+            <div
+              id="until-time-pomodoro-settings"
+              class="until-time-pomodoro-settings"
+              hidden
+            >
               <label>
                 <span>休憩時間（1回）</span>
-                <input id="until-time-break-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="5">
+                <input
+                  id="until-time-break-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="60"
+                  step="1"
+                  value="5"
+                />
                 <span>分</span>
               </label>
             </div>
-            <p id="until-time-pomodoro-help" class="settings-description" hidden>上の「1回の作業時間」と休憩時間を使って、指定時刻までの構成を自動計算します。</p>
-            <p id="until-time-status" class="settings-description" aria-live="polite"></p>
-          <div class="preset-row" aria-label="プリセット">
-            <button type="button" class="preset-button" data-seconds="300">5分</button>
-            <button type="button" class="preset-button" data-seconds="900">15分</button>
-            <button type="button" class="preset-button" data-seconds="1500">25分</button>
-            <button type="button" class="preset-button" data-seconds="3000">50分</button>
+            <p
+              id="until-time-pomodoro-help"
+              class="settings-description"
+              hidden
+            >
+              上の「1回の作業時間」と休憩時間を使って、指定時刻までの構成を自動計算します。
+            </p>
+            <p
+              id="until-time-status"
+              class="settings-description"
+              aria-live="polite"
+            ></p>
+            <div class="preset-row" aria-label="プリセット">
+              <button type="button" class="preset-button" data-seconds="300">
+                5分
+              </button>
+              <button type="button" class="preset-button" data-seconds="900">
+                15分
+              </button>
+              <button type="button" class="preset-button" data-seconds="1500">
+                25分
+              </button>
+              <button type="button" class="preset-button" data-seconds="3000">
+                50分
+              </button>
+            </div>
+          </fieldset>
+          <button class="primary-button modal-submit" type="submit">
+            この時間に設定
+          </button>
+        </form>
+      </dialog>
+
+      <dialog id="task-dialog" class="modal">
+        <form id="task-dialog-form" class="modal-card">
+          <div class="modal-header">
+            <h2>タスク名を入力</h2>
+            <button
+              class="icon-button close-dialog"
+              type="button"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
           </div>
-        </fieldset>
-        <button class="primary-button modal-submit" type="submit">この時間に設定</button>
-      </form>
-    </dialog>
+          <label class="dialog-field">
+            <span>タスク名</span>
+            <input
+              id="task-input"
+              type="text"
+              autocomplete="off"
+              maxlength="80"
+              placeholder="日報に残す作業名"
+              required
+            />
+          </label>
+          <label class="dialog-field">
+            <span>メモ（任意）</span>
+            <textarea
+              id="task-memo-input"
+              maxlength="300"
+              rows="3"
+              placeholder="作業内容や補足"
+            ></textarea>
+          </label>
+          <div>
+            <h3>最近のタスク</h3>
+            <div id="recent-task-list" class="recent-task-list"></div>
+          </div>
+          <button class="primary-button modal-submit" type="submit">
+            決定
+          </button>
+        </form>
+      </dialog>
 
-    <dialog id="task-dialog" class="modal">
-      <form id="task-dialog-form" class="modal-card">
-        <div class="modal-header">
-          <h2>タスク名を入力</h2>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-        </div>
-        <label class="dialog-field">
-          <span>タスク名</span>
-          <input id="task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
-        </label>
-        <label class="dialog-field">
-          <span>メモ（任意）</span>
-          <textarea id="task-memo-input" maxlength="300" rows="3" placeholder="作業内容や補足"></textarea>
-        </label>
-        <div>
-          <h3>最近のタスク</h3>
-          <div id="recent-task-list" class="recent-task-list"></div>
-        </div>
-        <button class="primary-button modal-submit" type="submit">決定</button>
-      </form>
-    </dialog>
-
-    <dialog id="settings-dialog" class="modal">
-      <section class="modal-card settings-card">
-        <div class="modal-header">
-          <h2>設定</h2>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-        </div>
-        <section class="settings-section" aria-labelledby="default-mode-settings-title">
-          <h3 id="default-mode-settings-title">初期表示のモード</h3>
-          <label class="dialog-field">
-            <select id="default-mode-select">
-              <option value="countdown">カウントダウン</option>
-              <option value="stopwatch">ストップウォッチ</option>
-            </select>
-          </label>
-          <h3 id="primary-time-display-title">大きく表示する時間</h3>
-          <label class="dialog-field">
-            <select id="primary-time-display-select" aria-labelledby="primary-time-display-title">
-              <option value="measurement">計測時間</option>
-              <option value="clock">現在時間</option>
-            </select>
-          </label>
-          <h3 id="default-time-format-title">履歴・集計のデフォルト時間表記</h3>
-          <label class="dialog-field">
-            <select id="default-time-format-select" aria-labelledby="default-time-format-title">
-              <option value="minutes">mm表記（ex: 65分）</option>
-              <option value="clock">hh:mm:ss表記（ex: 01:05:00）</option>
-            </select>
-          </label>
-          <h3 id="theme-settings-title">表示テーマ</h3>
-          <label class="dialog-field">
-            <select id="theme-select">
-              <option value="system">端末の設定に合わせる</option>
-              <option value="light">ライト</option>
-              <option value="dark">ダーク</option>
-            </select>
-          </label>
-          <h3 id="finish-sound-volume-title">カウントダウン0秒時の音量</h3>
-          <div class="finish-sound-volume-setting" aria-labelledby="finish-sound-volume-title">
-            <input id="finish-sound-volume-input" type="range" min="0" max="100" step="5" value="50" aria-labelledby="finish-sound-volume-title">
-            <label class="finish-sound-volume-number">
-              <input id="finish-sound-volume-number-input" type="number" inputmode="numeric" min="0" step="1" value="50" aria-label="終了音量の数値">
-              <span>%</span>
+      <dialog id="settings-dialog" class="modal">
+        <section class="modal-card settings-card">
+          <div class="modal-header">
+            <h2>設定</h2>
+            <button
+              class="icon-button close-dialog"
+              type="button"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+          </div>
+          <section
+            class="settings-section"
+            aria-labelledby="default-mode-settings-title"
+          >
+            <h3 id="default-mode-settings-title">初期表示のモード</h3>
+            <label class="dialog-field">
+              <select id="default-mode-select">
+                <option value="countdown">カウントダウン</option>
+                <option value="stopwatch">ストップウォッチ</option>
+              </select>
             </label>
-            <button id="preview-finish-sound-button" class="secondary-button" type="button">試聴</button>
+            <h3 id="primary-time-display-title">大きく表示する時間</h3>
+            <label class="dialog-field">
+              <select
+                id="primary-time-display-select"
+                aria-labelledby="primary-time-display-title"
+              >
+                <option value="measurement">計測時間</option>
+                <option value="clock">現在時間</option>
+              </select>
+            </label>
+            <h3 id="default-time-format-title">
+              履歴・集計のデフォルト時間表記
+            </h3>
+            <label class="dialog-field">
+              <select
+                id="default-time-format-select"
+                aria-labelledby="default-time-format-title"
+              >
+                <option value="minutes">mm表記（ex: 65分）</option>
+                <option value="clock">hh:mm:ss表記（ex: 01:05:00）</option>
+              </select>
+            </label>
+            <h3 id="theme-settings-title">表示テーマ</h3>
+            <label class="dialog-field">
+              <select id="theme-select">
+                <option value="system">端末の設定に合わせる</option>
+                <option value="light">ライト</option>
+                <option value="dark">ダーク</option>
+              </select>
+            </label>
+            <h3 id="finish-sound-volume-title">カウントダウン0秒時の音量</h3>
+            <div
+              class="finish-sound-volume-setting"
+              aria-labelledby="finish-sound-volume-title"
+            >
+              <input
+                id="finish-sound-volume-input"
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value="50"
+                aria-labelledby="finish-sound-volume-title"
+              />
+              <label class="finish-sound-volume-number">
+                <input
+                  id="finish-sound-volume-number-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                  value="50"
+                  aria-label="終了音量の数値"
+                />
+                <span>%</span>
+              </label>
+              <button
+                id="preview-finish-sound-button"
+                class="secondary-button"
+                type="button"
+              >
+                試聴
+              </button>
+            </div>
+            <h3 id="popup-size-settings-title">
+              ピクチャーインピクチャーのサイズ
+            </h3>
+            <p class="settings-description">
+              各表示状態でウィンドウのサイズを変更すると、次回からそのサイズで開きます。
+            </p>
+            <div class="settings-table-wrap">
+              <table class="settings-table">
+                <thead>
+                  <tr>
+                    <th scope="col">表示状態</th>
+                    <th scope="col">使用するサイズ</th>
+                    <th scope="col">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">通常</th>
+                    <td id="popup-size-status"></td>
+                    <td>
+                      <button
+                        id="reset-popup-size-button"
+                        class="secondary-button settings-reset-button"
+                        type="button"
+                      >
+                        リセット
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">最小化</th>
+                    <td id="minimized-popup-size-status"></td>
+                    <td>
+                      <button
+                        id="reset-minimized-popup-size-button"
+                        class="secondary-button settings-reset-button"
+                        type="button"
+                      >
+                        リセット
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <h3 id="aggregation-settings-title">高度な計測</h3>
+            <label class="settings-check-field">
+              <input id="aggregation-enabled-input" type="checkbox" />
+              <span>類似タスク名の統一確認を使用する</span>
+            </label>
+            <p class="settings-description settings-check-description">
+              入力したタスク名が既存名と似ている場合に統一するか確認します。
+            </p>
+            <label class="settings-check-field">
+              <input id="past-history-edit-input" type="checkbox" />
+              <span>過去の履歴編集を5分間許可する</span>
+            </label>
+            <p
+              id="past-history-edit-status"
+              class="settings-description settings-check-description"
+            >
+              OFF（過去の履歴は参照のみ）
+            </p>
+          </section>
+          <section
+            class="settings-section"
+            aria-labelledby="shortcut-settings-title"
+          >
+            <h3 id="shortcut-settings-title">ショートカットキー</h3>
+            <div class="shortcut-table-wrap">
+              <table class="shortcut-table">
+                <tbody>
+                  <tr>
+                    <th scope="row"><kbd>Ctrl</kbd>＋<kbd>Enter</kbd></th>
+                    <td>
+                      タスク・メモ入力を開く／入力・履歴追加・履歴編集を確定
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>T</kbd>
+                    </th>
+                    <td>タイマーを追加</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>H</kbd>
+                    </th>
+                    <td>作業履歴を表示</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>Tab</kbd>
+                    </th>
+                    <td>次のタイマータブへ移動</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>←</kbd>／<kbd
+                        >→</kbd
+                      >
+                    </th>
+                    <td>前／次のタイマータブへ移動</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>Delete</kbd>
+                    </th>
+                    <td>現在のタイマータブを削除</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>Backspace</kbd>
+                    </th>
+                    <td>現在のタイマータブを削除</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>D</kbd>
+                    </th>
+                    <td>現在のタイマータブを削除</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>S</kbd>
+                    </th>
+                    <td>標準表示→通常PiP／PiP内では通常・最小を切り替え</td>
+                  </tr>
+                  <tr>
+                    <th scope="row"><kbd>Space</kbd></th>
+                    <td>開始・一時停止・再開</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">
+                      <kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>R</kbd>
+                    </th>
+                    <td>リセット</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section
+            class="settings-section"
+            aria-labelledby="backup-settings-title"
+          >
+            <h3 id="backup-settings-title">データのバックアップ</h3>
+            <p class="settings-description">
+              タイマー、作業履歴、日別メモ、各種設定をJSONファイルに保存・復元します。ブラウザのデータを削除する前にエクスポートしてください。
+            </p>
+            <div class="settings-backup-actions">
+              <button
+                id="backup-export-button"
+                class="secondary-button"
+                type="button"
+              >
+                バックアップを<br />エクスポート
+              </button>
+              <button
+                id="backup-import-button"
+                class="secondary-button"
+                type="button"
+              >
+                バックアップを<br />インポート
+              </button>
+            </div>
+            <input
+              id="backup-file-input"
+              class="visually-hidden"
+              type="file"
+              accept="application/json,.json"
+            />
+            <p
+              id="backup-status"
+              class="settings-backup-status"
+              aria-live="polite"
+            ></p>
+          </section>
+        </section>
+      </dialog>
+
+      <dialog id="backup-import-mode-dialog" class="modal">
+        <section class="modal-card confirm-card">
+          <h2>バックアップの読み込み方法</h2>
+          <p id="backup-import-summary" class="confirm-message"></p>
+          <p class="settings-description">
+            結合では現在のタイマーと設定を維持し、履歴・日別メモ・出退勤記録を追加します。同じID・日付は現在のデータを優先します。
+          </p>
+          <div class="confirm-actions backup-import-mode-actions">
+            <button
+              id="cancel-backup-import-button"
+              class="secondary-button"
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              id="replace-backup-import-button"
+              class="danger-button"
+              type="button"
+            >
+              すべて置換
+            </button>
+            <button
+              id="merge-backup-import-button"
+              class="primary-button"
+              type="button"
+            >
+              データを結合
+            </button>
           </div>
-          <h3 id="popup-size-settings-title">ピクチャーインピクチャーのサイズ</h3>
-          <p class="settings-description">各表示状態でウィンドウのサイズを変更すると、次回からそのサイズで開きます。</p>
-          <div class="settings-table-wrap">
-            <table class="settings-table">
-              <thead>
-                <tr>
-                  <th scope="col">表示状態</th>
-                  <th scope="col">使用するサイズ</th>
-                  <th scope="col">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">通常</th>
-                  <td id="popup-size-status"></td>
-                  <td><button id="reset-popup-size-button" class="secondary-button settings-reset-button" type="button">リセット</button></td>
-                </tr>
-                <tr>
-                  <th scope="row">最小化</th>
-                  <td id="minimized-popup-size-status"></td>
-                  <td><button id="reset-minimized-popup-size-button" class="secondary-button settings-reset-button" type="button">リセット</button></td>
-                </tr>
-              </tbody>
-            </table>
+        </section>
+      </dialog>
+
+      <dialog id="history-dialog" class="modal">
+        <section class="modal-card history-card">
+          <div class="modal-header">
+            <div class="history-title">
+              <h2>作業履歴</h2>
+              <p id="history-help" class="history-help">
+                各記録をクリックすると内容の変更・削除ができます。
+              </p>
+            </div>
+            <button
+              class="icon-button close-dialog"
+              type="button"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
           </div>
-          <h3 id="aggregation-settings-title">高度な計測</h3>
-          <label class="settings-check-field">
-            <input id="aggregation-enabled-input" type="checkbox">
-            <span>類似タスク名の統一確認を使用する</span>
+          <div class="history-filters">
+            <div class="history-date-fields">
+              <label class="dialog-field">
+                <span>登録済み・選択中の日付</span>
+                <select id="history-date"></select>
+              </label>
+              <label id="history-date-picker-field" class="dialog-field" hidden>
+                <span>カレンダーから選択</span>
+                <input
+                  id="history-date-input"
+                  type="date"
+                  aria-label="履歴の日付を選択"
+                />
+              </label>
+            </div>
+            <div class="unit-toggle" role="group" aria-label="時間の表示形式">
+              <button
+                class="unit-button is-active"
+                type="button"
+                data-unit="minutes"
+              >
+                mm表記
+              </button>
+              <button class="unit-button" type="button" data-unit="clock">
+                hh:mm:ss表記
+              </button>
+            </div>
+          </div>
+          <p id="history-date-context" class="history-date-context" hidden>
+            過去の履歴（参照のみ）
+          </p>
+          <section class="daily-memo-section">
+            <label class="dialog-field">
+              <span>この日のメモ</span>
+              <textarea
+                id="daily-memo-input"
+                maxlength="1000"
+                rows="3"
+                placeholder="1日単位のメモを入力"
+              ></textarea>
+            </label>
+            <p
+              id="daily-memo-status"
+              class="daily-memo-status"
+              aria-live="polite"
+            ></p>
+          </section>
+          <section
+            id="history-summary"
+            class="history-summary"
+            hidden
+          ></section>
+          <div id="history-list" class="history-list" aria-live="polite"></div>
+          <p class="history-time-help">
+            時間帯は「最初の計測開始時刻～履歴追加時刻」を表示しています。
+          </p>
+          <div class="history-actions">
+            <button
+              id="add-history-button"
+              class="primary-button"
+              type="button"
+            >
+              作業履歴を追加
+            </button>
+            <button
+              id="export-history-button"
+              class="secondary-button"
+              type="button"
+            >
+              全履歴をTXT出力
+            </button>
+          </div>
+          <div
+            id="confirm-overlay"
+            class="confirm-overlay"
+            hidden
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-title"
+          >
+            <section class="confirm-card">
+              <h2 id="confirm-title">作業履歴を削除しますか？</h2>
+              <p id="confirm-message" class="confirm-message"></p>
+              <div class="confirm-actions">
+                <button
+                  id="cancel-delete-button"
+                  class="secondary-button"
+                  type="button"
+                >
+                  キャンセル
+                </button>
+                <button
+                  id="confirm-delete-button"
+                  class="danger-button"
+                  type="button"
+                >
+                  削除
+                </button>
+              </div>
+            </section>
+          </div>
+        </section>
+      </dialog>
+
+      <dialog id="task-memo-dialog" class="modal">
+        <section class="modal-card task-memo-card">
+          <div class="modal-header">
+            <div>
+              <h2 id="task-memo-title">タスクのメモ</h2>
+              <p class="history-help">
+                選択したタスクの記録とメモをまとめて表示します。
+              </p>
+            </div>
+            <div class="task-memo-header-actions">
+              <div class="task-memo-summary" aria-label="タスクの集計">
+                <span id="task-memo-count">0件</span>
+                <button
+                  id="task-memo-total"
+                  type="button"
+                  title="クリックして時間表記を切り替え"
+                >
+                  合計 0分
+                </button>
+              </div>
+              <button
+                class="icon-button close-dialog"
+                type="button"
+                aria-label="閉じる"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div id="task-memo-list" class="task-memo-list"></div>
+        </section>
+      </dialog>
+
+      <dialog id="work-summary-dialog" class="modal">
+        <section class="modal-card work-summary-card">
+          <div class="modal-header work-summary-header">
+            <div>
+              <h2>勤務集計</h2>
+              <p id="work-summary-date" class="history-help"></p>
+            </div>
+            <div
+              class="unit-toggle work-summary-unit-toggle"
+              role="group"
+              aria-label="勤務集計の時間表示形式"
+            >
+              <button
+                class="work-summary-unit-button is-active"
+                type="button"
+                data-work-summary-unit="minutes"
+              >
+                mm表記
+              </button>
+              <button
+                class="work-summary-unit-button"
+                type="button"
+                data-work-summary-unit="clock"
+              >
+                hh:mm:ss表記
+              </button>
+            </div>
+            <button
+              class="icon-button close-dialog"
+              type="button"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+          </div>
+          <div class="work-summary-input-grid">
+            <fieldset class="countdown-settings work-time-settings">
+              <legend>出退勤時間</legend>
+              <div class="time-inputs manual-time-range-inputs">
+                <label>
+                  <input id="clock-in-input" type="time" step="60" />
+                </label>
+                <span class="manual-time-range-separator" aria-hidden="true"
+                  >～</span
+                >
+                <label>
+                  <input id="clock-out-input" type="time" step="60" />
+                </label>
+              </div>
+            </fieldset>
+            <fieldset class="countdown-settings work-break-settings">
+              <legend>休憩時間</legend>
+              <div class="time-inputs work-break-inputs">
+                <label>
+                  <input
+                    id="break-time-input"
+                    type="time"
+                    step="60"
+                    value="00:00"
+                  />
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <p id="work-summary-edit-status" class="daily-memo-status"></p>
+          <dl class="work-summary-metrics">
+            <div>
+              <dt>勤務時間</dt>
+              <dd id="work-duration-value">--</dd>
+            </div>
+            <div>
+              <dt>計測時間</dt>
+              <dd id="measured-duration-value">0分</dd>
+            </div>
+            <div>
+              <dt>差分（勤務−計測）</dt>
+              <dd id="work-difference-value">--</dd>
+            </div>
+          </dl>
+          <section>
+            <h3 class="work-summary-subtitle">タスク別集計</h3>
+            <div id="work-summary-task-table"></div>
+          </section>
+        </section>
+      </dialog>
+
+      <dialog id="export-history-dialog" class="modal">
+        <form id="export-history-form" class="modal-card">
+          <div class="modal-header">
+            <h2>履歴の出力設定</h2>
+            <button
+              class="icon-button close-dialog"
+              type="button"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+          </div>
+          <fieldset
+            id="export-duration-format-group"
+            class="export-option-group"
+          >
+            <legend>作業時間の表現</legend>
+            <label
+              ><input
+                type="radio"
+                name="export-duration-format"
+                value="minutes"
+                checked
+              />
+              分表記（65分）</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="export-duration-format"
+                value="clock"
+              />
+              時間表記（01:05:00）</label
+            >
+          </fieldset>
+          <fieldset class="export-option-group">
+            <legend>出力する時間</legend>
+            <label
+              ><input id="export-time-range-input" type="checkbox" checked />
+              開始・終了時間</label
+            >
+            <label
+              ><input id="export-duration-input" type="checkbox" checked />
+              作業時間</label
+            >
+          </fieldset>
+          <fieldset class="export-option-group">
+            <legend>メモ</legend>
+            <label
+              ><input id="export-memo-input" type="checkbox" checked />
+              タスクメモ・日別メモを出力する</label
+            >
+          </fieldset>
+          <p
+            id="export-history-error"
+            class="form-error"
+            aria-live="polite"
+          ></p>
+          <button class="primary-button modal-submit" type="submit">
+            TXTファイルを出力
+          </button>
+        </form>
+      </dialog>
+
+      <dialog id="edit-history-dialog" class="modal">
+        <form id="edit-history-form" class="modal-card">
+          <div class="modal-header">
+            <h2 id="edit-history-title">作業履歴を編集</h2>
+            <button
+              class="icon-button close-dialog"
+              type="button"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
+          </div>
+          <fieldset class="countdown-settings">
+            <legend>開始・終了時刻</legend>
+            <div class="time-inputs manual-time-range-inputs">
+              <label>
+                <span>開始</span>
+                <input id="edit-start-time-input" type="time" step="1" />
+              </label>
+              <span class="manual-time-range-separator" aria-hidden="true"
+                >～</span
+              >
+              <label>
+                <span>終了</span>
+                <input id="edit-end-time-input" type="time" step="1" />
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="countdown-settings">
+            <legend>作業時間</legend>
+            <div class="time-inputs">
+              <label>
+                <span>時</span>
+                <input
+                  id="edit-hours-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                />
+              </label>
+              <label>
+                <span>分</span>
+                <input
+                  id="edit-minutes-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                />
+              </label>
+              <label>
+                <span>秒</span>
+                <input
+                  id="edit-seconds-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                />
+              </label>
+            </div>
+          </fieldset>
+          <label class="dialog-field">
+            <span>タスク名</span>
+            <input
+              id="edit-task-input"
+              type="text"
+              autocomplete="off"
+              maxlength="80"
+              required
+            />
           </label>
-          <p class="settings-description settings-check-description">入力したタスク名が既存名と似ている場合に統一するか確認します。</p>
-          <label class="settings-check-field">
-            <input id="past-history-edit-input" type="checkbox">
-            <span>過去の履歴編集を5分間許可する</span>
+          <label class="dialog-field">
+            <span>メモ（任意）</span>
+            <textarea id="edit-memo-input" maxlength="300" rows="3"></textarea>
           </label>
-          <p id="past-history-edit-status" class="settings-description settings-check-description">OFF（過去の履歴は参照のみ）</p>
+          <p id="edit-history-error" class="form-error" aria-live="polite"></p>
+          <button
+            id="resume-history-button"
+            class="secondary-button resume-history-button"
+            type="button"
+          >
+            この履歴から計測を再開
+          </button>
+          <div class="edit-history-actions">
+            <button id="edit-delete-button" class="danger-button" type="button">
+              削除
+            </button>
+            <button
+              id="edit-history-submit-button"
+              class="primary-button"
+              type="submit"
+            >
+              変更を保存
+            </button>
+          </div>
+        </form>
+      </dialog>
 
-        </section>
-        <section class="settings-section" aria-labelledby="shortcut-settings-title">
-          <h3 id="shortcut-settings-title">ショートカットキー</h3>
-          <div class="shortcut-table-wrap">
-            <table class="shortcut-table">
-              <tbody>
-                <tr>
-                  <th scope="row"><kbd>Ctrl</kbd>＋<kbd>Enter</kbd></th>
-                  <td>タスク・メモ入力を開く／入力・履歴追加・履歴編集を確定</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>T</kbd></th>
-                  <td>タイマーを追加</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>H</kbd></th>
-                  <td>作業履歴を表示</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>Tab</kbd></th>
-                  <td>次のタイマータブへ移動</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>←</kbd>／<kbd>→</kbd></th>
-                  <td>前／次のタイマータブへ移動</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>Delete</kbd></th>
-                  <td>現在のタイマータブを削除</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>Backspace</kbd></th>
-                  <td>現在のタイマータブを削除</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>D</kbd></th>
-                  <td>現在のタイマータブを削除</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>S</kbd></th>
-                  <td>標準表示→通常PiP／PiP内では通常・最小を切り替え</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Space</kbd></th>
-                  <td>開始・一時停止・再開</td>
-                </tr>
-                <tr>
-                  <th scope="row"><kbd>Alt</kbd>＋<kbd>Shift</kbd>＋<kbd>R</kbd></th>
-                  <td>リセット</td>
-                </tr>
-              </tbody>
-            </table>
+      <dialog id="resume-history-confirm-dialog" class="modal">
+        <section class="modal-card confirm-card">
+          <h2>この履歴から計測を再開しますか？</h2>
+          <p id="resume-history-confirm-message" class="confirm-message"></p>
+          <div class="confirm-actions">
+            <button
+              id="cancel-resume-history-button"
+              class="secondary-button"
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              id="confirm-resume-history-button"
+              class="primary-button"
+              type="button"
+            >
+              計測再開
+            </button>
           </div>
         </section>
-        <section class="settings-section" aria-labelledby="backup-settings-title">
-          <h3 id="backup-settings-title">データのバックアップ</h3>
-          <p class="settings-description">タイマー、作業履歴、日別メモ、各種設定をJSONファイルに保存・復元します。ブラウザのデータを削除する前にエクスポートしてください。</p>
-          <div class="settings-backup-actions">
-            <button id="backup-export-button" class="secondary-button" type="button">バックアップを<br>エクスポート</button>
-            <button id="backup-import-button" class="secondary-button" type="button">バックアップを<br>インポート</button>
+      </dialog>
+
+      <dialog id="add-history-dialog" class="modal">
+        <form id="add-history-form" class="modal-card">
+          <div class="modal-header">
+            <h2>作業履歴を追加</h2>
+            <button
+              class="icon-button close-dialog"
+              type="button"
+              aria-label="閉じる"
+            >
+              ×
+            </button>
           </div>
-          <input id="backup-file-input" class="visually-hidden" type="file" accept="application/json,.json">
-          <p id="backup-status" class="settings-backup-status" aria-live="polite"></p>
+          <label class="dialog-field">
+            <span>日付</span>
+            <input
+              id="manual-date"
+              type="date"
+              readonly
+              aria-readonly="true"
+              required
+            />
+          </label>
+          <fieldset class="countdown-settings">
+            <legend>開始・終了時刻</legend>
+            <div class="time-inputs manual-time-range-inputs">
+              <label>
+                <span>開始</span>
+                <input id="manual-start-time-input" type="time" step="1" />
+              </label>
+              <span class="manual-time-range-separator" aria-hidden="true"
+                >～</span
+              >
+              <label>
+                <span>終了</span>
+                <input id="manual-end-time-input" type="time" step="1" />
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="countdown-settings">
+            <legend>作業時間</legend>
+            <div class="time-inputs">
+              <label>
+                <span>時</span>
+                <input
+                  id="manual-hours-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                  value="0"
+                />
+              </label>
+              <label>
+                <span>分</span>
+                <input
+                  id="manual-minutes-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                  value="0"
+                />
+              </label>
+              <label>
+                <span>秒</span>
+                <input
+                  id="manual-seconds-input"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  step="1"
+                  value="0"
+                />
+              </label>
+            </div>
+          </fieldset>
+          <label class="dialog-field">
+            <span>タスク名</span>
+            <input
+              id="manual-task-input"
+              type="text"
+              autocomplete="off"
+              maxlength="80"
+              placeholder="日報に残す作業名"
+              required
+            />
+          </label>
+          <label class="dialog-field">
+            <span>メモ（任意）</span>
+            <textarea
+              id="manual-memo-input"
+              maxlength="300"
+              rows="3"
+              placeholder="作業内容や補足"
+            ></textarea>
+          </label>
+          <div>
+            <h3>最近のタスク</h3>
+            <div id="manual-recent-task-list" class="recent-task-list"></div>
+          </div>
+          <p
+            id="manual-history-error"
+            class="form-error"
+            aria-live="polite"
+          ></p>
+          <button class="primary-button modal-submit" type="submit">
+            履歴に追加
+          </button>
+        </form>
+      </dialog>
+
+      <dialog id="duration-conflict-dialog" class="modal">
+        <section class="modal-card confirm-card">
+          <h2>登録する作業時間を選んでください</h2>
+          <p id="duration-conflict-message" class="confirm-message"></p>
+          <p class="confirm-message">
+            開始・終了時刻はどちらを選んでも入力した内容で保存されます。
+          </p>
+          <div class="duration-conflict-actions">
+            <button
+              id="cancel-duration-conflict-button"
+              class="secondary-button"
+              type="button"
+            >
+              キャンセル
+            </button>
+            <button
+              id="use-entered-duration-button"
+              class="secondary-button"
+              type="button"
+            >
+              入力した作業時間を使用
+            </button>
+            <button
+              id="use-time-range-duration-button"
+              class="primary-button"
+              type="button"
+            >
+              開始・終了から計算
+            </button>
+          </div>
         </section>
-      </section>
-    </dialog>
+      </dialog>
+    </main>
 
-    <dialog id="backup-import-mode-dialog" class="modal">
-      <section class="modal-card confirm-card">
-        <h2>バックアップの読み込み方法</h2>
-        <p id="backup-import-summary" class="confirm-message"></p>
-        <p class="settings-description">結合では現在のタイマーと設定を維持し、履歴・日別メモ・出退勤記録を追加します。同じID・日付は現在のデータを優先します。</p>
-        <div class="confirm-actions backup-import-mode-actions">
-          <button id="cancel-backup-import-button" class="secondary-button" type="button">キャンセル</button>
-          <button id="replace-backup-import-button" class="danger-button" type="button">すべて置換</button>
-          <button id="merge-backup-import-button" class="primary-button" type="button">データを結合</button>
-        </div>
-      </section>
-    </dialog>
-
-    <dialog id="history-dialog" class="modal">
+    <dialog id="todo-dialog" class="modal" aria-labelledby="todo-title">
       <section class="modal-card history-card">
         <div class="modal-header">
           <div class="history-title">
-            <h2>作業履歴</h2>
-            <p id="history-help" class="history-help">各記録をクリックすると内容の変更・削除ができます。</p>
+            <h2 id="todo-title">Todoリスト</h2>
+            <p class="history-help">
+              Todo事項と期限を登録できます。期限は未指定でも追加できます。
+            </p>
           </div>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
+          <button
+            id="close-todo-button"
+            class="icon-button"
+            type="button"
+            aria-label="閉じる"
+          >
+            ×
+          </button>
         </div>
-        <div class="history-filters">
-          <div class="history-date-fields">
-            <label class="dialog-field">
-              <span>登録済み・選択中の日付</span>
-              <select id="history-date"></select>
+        <form id="todo-form">
+          <div class="todo-fields">
+            <label class="dialog-field" for="todo-text">
+              <span>Todo事項</span>
+              <input
+                id="todo-text"
+                maxlength="300"
+                required
+                autocomplete="off"
+                placeholder="やることを入力"
+              />
             </label>
-            <label id="history-date-picker-field" class="dialog-field" hidden>
-              <span>カレンダーから選択</span>
-              <input id="history-date-input" type="date" aria-label="履歴の日付を選択">
+            <label class="dialog-field" for="todo-due">
+              <span>期限（任意）</span>
+              <input id="todo-due" type="date" />
             </label>
           </div>
-          <div class="unit-toggle" role="group" aria-label="時間の表示形式">
-            <button class="unit-button is-active" type="button" data-unit="minutes">mm表記</button>
-            <button class="unit-button" type="button" data-unit="clock">hh:mm:ss表記</button>
+          <div class="history-actions">
+            <button class="primary-button" type="submit">Todoを追加</button>
           </div>
-        </div>
-        <p id="history-date-context" class="history-date-context" hidden>過去の履歴（参照のみ）</p>
-        <section class="daily-memo-section">
-          <label class="dialog-field">
-            <span>この日のメモ</span>
-            <textarea id="daily-memo-input" maxlength="1000" rows="3" placeholder="1日単位のメモを入力"></textarea>
-          </label>
-          <p id="daily-memo-status" class="daily-memo-status" aria-live="polite"></p>
-        </section>
-        <section id="history-summary" class="history-summary" hidden></section>
-        <div id="history-list" class="history-list" aria-live="polite"></div>
-        <p class="history-time-help">時間帯は「最初の計測開始時刻～履歴追加時刻」を表示しています。</p>
-        <div class="history-actions">
-          <button id="add-history-button" class="primary-button" type="button">作業履歴を追加</button>
-          <button id="export-history-button" class="secondary-button" type="button">全履歴をTXT出力</button>
-        </div>
-        <div id="confirm-overlay" class="confirm-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-          <section class="confirm-card">
-            <h2 id="confirm-title">作業履歴を削除しますか？</h2>
-            <p id="confirm-message" class="confirm-message"></p>
-            <div class="confirm-actions">
-              <button id="cancel-delete-button" class="secondary-button" type="button">キャンセル</button>
-              <button id="confirm-delete-button" class="danger-button" type="button">削除</button>
-            </div>
-          </section>
-        </div>
+        </form>
+        <div id="todo-list" class="history-list" aria-live="polite"></div>
       </section>
     </dialog>
-
-    <dialog id="task-memo-dialog" class="modal">
-      <section class="modal-card task-memo-card">
-        <div class="modal-header">
-          <div>
-            <h2 id="task-memo-title">タスクのメモ</h2>
-            <p class="history-help">選択したタスクの記録とメモをまとめて表示します。</p>
-          </div>
-          <div class="task-memo-header-actions">
-            <div class="task-memo-summary" aria-label="タスクの集計">
-              <span id="task-memo-count">0件</span>
-              <button id="task-memo-total" type="button" title="クリックして時間表記を切り替え">合計 0分</button>
-            </div>
-            <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-          </div>
-        </div>
-        <div id="task-memo-list" class="task-memo-list"></div>
-      </section>
-    </dialog>
-
-    <dialog id="work-summary-dialog" class="modal">
-      <section class="modal-card work-summary-card">
-        <div class="modal-header work-summary-header">
-          <div>
-            <h2>勤務集計</h2>
-            <p id="work-summary-date" class="history-help"></p>
-          </div>
-          <div class="unit-toggle work-summary-unit-toggle" role="group" aria-label="勤務集計の時間表示形式">
-            <button class="work-summary-unit-button is-active" type="button" data-work-summary-unit="minutes">mm表記</button>
-            <button class="work-summary-unit-button" type="button" data-work-summary-unit="clock">hh:mm:ss表記</button>
-          </div>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-        </div>
-        <div class="work-summary-input-grid">
-          <fieldset class="countdown-settings work-time-settings">
-            <legend>出退勤時間</legend>
-            <div class="time-inputs manual-time-range-inputs">
-              <label>
-                <input id="clock-in-input" type="time" step="60">
-              </label>
-              <span class="manual-time-range-separator" aria-hidden="true">～</span>
-              <label>
-                <input id="clock-out-input" type="time" step="60">
-              </label>
-            </div>
-          </fieldset>
-          <fieldset class="countdown-settings work-break-settings">
-            <legend>休憩時間</legend>
-            <div class="time-inputs work-break-inputs">
-              <label>
-                <input id="break-time-input" type="time" step="60" value="00:00">
-              </label>
-            </div>
-          </fieldset>
-        </div>
-        <p id="work-summary-edit-status" class="daily-memo-status"></p>
-        <dl class="work-summary-metrics">
-          <div><dt>勤務時間</dt><dd id="work-duration-value">--</dd></div>
-          <div><dt>計測時間</dt><dd id="measured-duration-value">0分</dd></div>
-          <div><dt>差分（勤務−計測）</dt><dd id="work-difference-value">--</dd></div>
-        </dl>
-        <section>
-          <h3 class="work-summary-subtitle">タスク別集計</h3>
-          <div id="work-summary-task-table"></div>
-        </section>
-      </section>
-    </dialog>
-
-    <dialog id="export-history-dialog" class="modal">
-      <form id="export-history-form" class="modal-card">
-        <div class="modal-header">
-          <h2>履歴の出力設定</h2>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-        </div>
-        <fieldset id="export-duration-format-group" class="export-option-group">
-          <legend>作業時間の表現</legend>
-          <label><input type="radio" name="export-duration-format" value="minutes" checked> 分表記（65分）</label>
-          <label><input type="radio" name="export-duration-format" value="clock"> 時間表記（01:05:00）</label>
-        </fieldset>
-        <fieldset class="export-option-group">
-          <legend>出力する時間</legend>
-          <label><input id="export-time-range-input" type="checkbox" checked> 開始・終了時間</label>
-          <label><input id="export-duration-input" type="checkbox" checked> 作業時間</label>
-        </fieldset>
-        <fieldset class="export-option-group">
-          <legend>メモ</legend>
-          <label><input id="export-memo-input" type="checkbox" checked> タスクメモ・日別メモを出力する</label>
-        </fieldset>
-        <p id="export-history-error" class="form-error" aria-live="polite"></p>
-        <button class="primary-button modal-submit" type="submit">TXTファイルを出力</button>
-      </form>
-    </dialog>
-
-    <dialog id="edit-history-dialog" class="modal">
-      <form id="edit-history-form" class="modal-card">
-        <div class="modal-header">
-          <h2 id="edit-history-title">作業履歴を編集</h2>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-        </div>
-        <fieldset class="countdown-settings">
-          <legend>開始・終了時刻</legend>
-          <div class="time-inputs manual-time-range-inputs">
-            <label>
-              <span>開始</span>
-              <input id="edit-start-time-input" type="time" step="1">
-            </label>
-            <span class="manual-time-range-separator" aria-hidden="true">～</span>
-            <label>
-              <span>終了</span>
-              <input id="edit-end-time-input" type="time" step="1">
-            </label>
-          </div>
-        </fieldset>
-        <fieldset class="countdown-settings">
-          <legend>作業時間</legend>
-          <div class="time-inputs">
-            <label>
-              <span>時</span>
-              <input id="edit-hours-input" type="number" inputmode="numeric" min="0" step="1">
-            </label>
-            <label>
-              <span>分</span>
-              <input id="edit-minutes-input" type="number" inputmode="numeric" min="0" step="1">
-            </label>
-            <label>
-              <span>秒</span>
-              <input id="edit-seconds-input" type="number" inputmode="numeric" min="0" step="1">
-            </label>
-          </div>
-        </fieldset>
-        <label class="dialog-field">
-          <span>タスク名</span>
-          <input id="edit-task-input" type="text" autocomplete="off" maxlength="80" required>
-        </label>
-        <label class="dialog-field">
-          <span>メモ（任意）</span>
-          <textarea id="edit-memo-input" maxlength="300" rows="3"></textarea>
-        </label>
-        <p id="edit-history-error" class="form-error" aria-live="polite"></p>
-        <button id="resume-history-button" class="secondary-button resume-history-button" type="button">この履歴から計測を再開</button>
-        <div class="edit-history-actions">
-          <button id="edit-delete-button" class="danger-button" type="button">削除</button>
-          <button id="edit-history-submit-button" class="primary-button" type="submit">変更を保存</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="resume-history-confirm-dialog" class="modal">
-      <section class="modal-card confirm-card">
-        <h2>この履歴から計測を再開しますか？</h2>
-        <p id="resume-history-confirm-message" class="confirm-message"></p>
-        <div class="confirm-actions">
-          <button id="cancel-resume-history-button" class="secondary-button" type="button">キャンセル</button>
-          <button id="confirm-resume-history-button" class="primary-button" type="button">計測再開</button>
-        </div>
-      </section>
-    </dialog>
-
-    <dialog id="add-history-dialog" class="modal">
-      <form id="add-history-form" class="modal-card">
-        <div class="modal-header">
-          <h2>作業履歴を追加</h2>
-          <button class="icon-button close-dialog" type="button" aria-label="閉じる">×</button>
-        </div>
-        <label class="dialog-field">
-          <span>日付</span>
-          <input id="manual-date" type="date" readonly aria-readonly="true" required>
-        </label>
-        <fieldset class="countdown-settings">
-          <legend>開始・終了時刻</legend>
-          <div class="time-inputs manual-time-range-inputs">
-            <label>
-              <span>開始</span>
-              <input id="manual-start-time-input" type="time" step="1">
-            </label>
-            <span class="manual-time-range-separator" aria-hidden="true">～</span>
-            <label>
-              <span>終了</span>
-              <input id="manual-end-time-input" type="time" step="1">
-            </label>
-          </div>
-        </fieldset>
-        <fieldset class="countdown-settings">
-          <legend>作業時間</legend>
-          <div class="time-inputs">
-            <label>
-              <span>時</span>
-              <input id="manual-hours-input" type="number" inputmode="numeric" min="0" step="1" value="0">
-            </label>
-            <label>
-              <span>分</span>
-              <input id="manual-minutes-input" type="number" inputmode="numeric" min="0" step="1" value="0">
-            </label>
-            <label>
-              <span>秒</span>
-              <input id="manual-seconds-input" type="number" inputmode="numeric" min="0" step="1" value="0">
-            </label>
-          </div>
-        </fieldset>
-        <label class="dialog-field">
-          <span>タスク名</span>
-          <input id="manual-task-input" type="text" autocomplete="off" maxlength="80" placeholder="日報に残す作業名" required>
-        </label>
-        <label class="dialog-field">
-          <span>メモ（任意）</span>
-          <textarea id="manual-memo-input" maxlength="300" rows="3" placeholder="作業内容や補足"></textarea>
-        </label>
-        <div>
-          <h3>最近のタスク</h3>
-          <div id="manual-recent-task-list" class="recent-task-list"></div>
-        </div>
-        <p id="manual-history-error" class="form-error" aria-live="polite"></p>
-        <button class="primary-button modal-submit" type="submit">履歴に追加</button>
-      </form>
-    </dialog>
-
-    <dialog id="duration-conflict-dialog" class="modal">
-      <section class="modal-card confirm-card">
-        <h2>登録する作業時間を選んでください</h2>
-        <p id="duration-conflict-message" class="confirm-message"></p>
-        <p class="confirm-message">開始・終了時刻はどちらを選んでも入力した内容で保存されます。</p>
-        <div class="duration-conflict-actions">
-          <button id="cancel-duration-conflict-button" class="secondary-button" type="button">キャンセル</button>
-          <button id="use-entered-duration-button" class="secondary-button" type="button">入力した作業時間を使用</button>
-          <button id="use-time-range-duration-button" class="primary-button" type="button">開始・終了から計算</button>
-        </div>
-      </section>
-    </dialog>
-    </main>
-
-    <script src="./app.js" defer></script>
+    <script src="./assets/app.js" defer></script>
   </body>
 </html>

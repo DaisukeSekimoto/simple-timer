@@ -1,0 +1,124 @@
+.is-popup .app {
+  width: 100%;
+  margin: 0;
+  padding: 10px;
+}
+
+.is-popup .timer-panel {
+  box-shadow: none;
+}
+
+.is-popup .time-display {
+  padding-top: 18px;
+  font-size: 4.1rem;
+}
+
+.is-popup #time-display.is-measurement-awaiting-stop {
+  font-size: 3.6rem;
+}
+
+.is-popup .app-header {
+  margin-bottom: 8px;
+}
+
+.is-popup #popup-button {
+  display: none;
+}
+
+.is-popup .minimize-button {
+  display: inline-grid;
+}
+
+.is-minimized {
+  min-width: 320px;
+  min-height: 190px;
+}
+
+.is-popup.is-minimized {
+  min-width: 0;
+  min-height: 0;
+}
+
+.is-popup.is-minimized .app {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 5px 6px;
+}
+
+.is-popup.is-minimized.is-minimized-countdown-overtime .app {
+  animation: countdown-minimized-attention 900ms ease-in-out infinite alternate;
+}
+
+.is-popup.is-minimized .timer-panel {
+  border-color: transparent;
+  background: transparent;
+}
+
+.is-popup.is-minimized .app-header {
+  margin-bottom: 0;
+}
+
+.is-popup.is-minimized .mode-tabs,
+.is-popup.is-minimized .timer-workspace-tabs,
+.is-popup.is-minimized .timer-form,
+.is-popup.is-minimized .control-row,
+.is-popup.is-minimized #history-button,
+.is-popup.is-minimized #settings-button {
+  display: none;
+}
+
+.is-popup.is-minimized .time-display {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
+  padding: 3px 5px 0;
+  font-size: 3rem;
+}
+
+.is-popup.is-minimized #time-display.is-measurement-awaiting-stop {
+  font-size: 2.6rem;
+}
+
+.is-popup.is-minimized .time-display-area {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  padding-bottom: 8px;
+}
+
+.is-popup.is-minimized .cumulative-time-display {
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+  line-height: 1;
+  font-size: 0.74rem;
+}
+
+.is-popup.is-minimized .time-meta-row {
+  min-height: 14px;
+  margin: -22px 0 0;
+  padding: 0 2px;
+}
+
+.is-popup.is-minimized .pomodoro-phase-display {
+  padding: 1px 5px;
+  font-size: 0.64rem;
+}
+
+.is-popup.is-minimized .record-date {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.is-popup.is-minimized .secondary-time-display {
+  max-width: 100%;
+  margin: 1px 4px -1px auto;
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.is-popup.is-minimized .compact-start-pause-button {
+  display: inline-grid;
+  place-items: center;
+}

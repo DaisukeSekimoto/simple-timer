@@ -1,0 +1,38 @@
+.history-item {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+
+.history-item:hover,
+.history-item:focus-visible {
+  padding-right: 8px;
+  padding-left: 8px;
+  background: var(--subtle-soft);
+}
+
+.history-item span:last-child {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.history-item-details {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.history-item-meta {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 400;
+}

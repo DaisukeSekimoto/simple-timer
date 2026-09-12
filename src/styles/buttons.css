@@ -1,0 +1,26 @@
+.primary-button {
+  border: 1px solid var(--accent);
+  color: #fff;
+  background: var(--accent);
+}
+
+.primary-button:hover,
+.primary-button:focus-visible {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.danger-button {
+  min-height: 40px;
+  border: 1px solid var(--danger);
+  border-radius: 7px;
+  color: #fff;
+  background: var(--danger);
+  font-weight: 700;
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  border-color: #973629;
+  background: #973629;
+}

@@ -1,0 +1,24 @@
+.recent-task-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-height: 150px;
+  margin-top: 9px;
+  overflow-y: auto;
+}
+
+.recent-task-button {
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  background: var(--field);
+  font-size: 0.84rem;
+}
+
+.empty-message {
+  margin: 0;
+  padding: 22px 10px;
+  color: var(--muted);
+  text-align: center;
+}

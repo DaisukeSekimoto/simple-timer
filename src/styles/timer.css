@@ -1,0 +1,586 @@
+.timer-workspace-tabs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 38px;
+  align-items: start;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.timer-tab-list {
+  display: flex;
+  min-width: 0;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.timer-workspace-tab {
+  display: flex;
+  min-width: min(128px, 100%);
+  max-width: 100%;
+  flex: 1 1 128px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--subtle);
+}
+
+.timer-workspace-tab.is-active {
+  border-color: var(--accent);
+  background: var(--panel);
+}
+
+.timer-workspace-tab.is-running-background {
+  border-color: #6957c7;
+  animation: background-timer-attention 1.4s ease-in-out infinite;
+}
+
+.timer-workspace-tab.is-countdown-overtime {
+  border-color: var(--danger);
+  animation: countdown-tab-attention 900ms ease-in-out infinite alternate;
+}
+
+.timer-workspace-tab.is-countdown-overtime .timer-tab-select,
+.timer-workspace-tab.is-countdown-overtime.is-active .timer-tab-select {
+  color: var(--danger);
+}
+
+.timer-tab-select,
+.timer-tab-close,
+.add-timer-tab-button {
+  min-height: 36px;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 700;
+}
+
+.timer-tab-select {
+  min-width: 0;
+  padding: 0 10px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer-workspace-tab.is-active .timer-tab-select {
+  color: var(--accent-strong);
+}
+
+.timer-tab-close {
+  width: 30px;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.timer-tab-close:hover,
+.timer-tab-close:focus-visible {
+  color: var(--danger);
+  background: #f8eae8;
+}
+
+.add-timer-tab-button {
+  width: 38px;
+  flex: 0 0 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--accent);
+  background: var(--panel);
+  font-size: 1.2rem;
+}
+
+.timer-tab-select:hover,
+.timer-tab-select:focus-visible,
+.add-timer-tab-button:hover,
+.add-timer-tab-button:focus-visible {
+  background: var(--subtle-soft);
+}
+
+.icon-button:hover,
+.icon-button:focus-visible,
+.secondary-button:hover,
+.secondary-button:focus-visible,
+.preset-button:hover,
+.preset-button:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--subtle-soft);
+}
+
+.timer-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.mode-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  background: var(--subtle);
+}
+
+.mode-tab {
+  min-height: 36px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.mode-tab.is-active {
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: 0 1px 4px rgba(23, 32, 38, 0.08);
+}
+
+.time-display {
+  padding: 24px 16px 0px;
+  font-size: clamp(3rem, 16vw, 4.7rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.time-meta-row {
+  display: grid;
+  min-height: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  margin: -9px 0 0px;
+  padding: 0 10px;
+}
+
+.time-meta-row[hidden] {
+  display: none;
+}
+
+.cumulative-time-display {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cumulative-time-display:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cumulative-time-display[hidden] {
+  display: none;
+}
+
+.pomodoro-phase-display {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  width: max-content;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.pomodoro-phase-display.is-break {
+  color: var(--break-text);
+  background: var(--break-bg);
+}
+
+.time-meta-row .pomodoro-phase-display[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+.timer-form {
+  display: grid;
+  gap: 14px;
+  padding: 0 16px 16px;
+}
+
+.task-field {
+  display: grid;
+  gap: 6px;
+}
+
+.task-field-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-field-heading > span {
+  flex: none;
+}
+
+.secondary-time-display:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.task-field-heading > span,
+.time-inputs span,
+.countdown-settings legend {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dialog-field input,
+.dialog-field select,
+.dialog-field textarea,
+.time-inputs input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+}
+
+.dialog-field textarea {
+  min-height: 72px;
+  padding: 9px 10px;
+  resize: vertical;
+}
+
+.task-select-button {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+  text-align: left;
+}
+
+.task-select-button span:last-child {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.time-inputs.manual-time-range-inputs {
+  width: min(100%, 380px);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  justify-self: center;
+  margin-inline: auto;
+}
+
+.manual-time-range-separator {
+  align-self: end;
+  padding-bottom: 10px;
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.countdown-settings {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.countdown-settings[hidden] {
+  display: none;
+}
+
+.countdown-settings legend {
+  padding: 0;
+}
+
+.countdown-duration-button {
+  display: grid;
+  min-height: 42px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+  text-align: left;
+}
+
+.countdown-duration-button:hover,
+.countdown-duration-button:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--subtle-soft);
+}
+
+.countdown-duration-button > span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.countdown-duration-button > span:last-child {
+  color: var(--accent);
+}
+
+.countdown-duration-button strong {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.until-time-section {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--subtle-soft);
+}
+
+.until-time-section h3 {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+#until-time-status {
+  white-space: pre-wrap;
+}
+
+.until-time-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.until-time-pomodoro-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.until-time-pomodoro-settings[hidden] {
+  display: none;
+}
+
+.until-time-pomodoro-settings label {
+  display: grid;
+  grid-template-columns: auto minmax(52px, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.until-time-pomodoro-settings input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+}
+
+.until-time-controls input {
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+  font: inherit;
+}
+
+.time-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.pomodoro-footer {
+  display: grid;
+  min-height: 42px;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 8px;
+}
+
+.pomodoro-break-settings {
+  display: grid;
+  transition: opacity 150ms ease;
+}
+
+.pomodoro-break-settings:not(.is-active) {
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.pomodoro-break-settings label {
+  display: grid;
+  grid-template-columns: max-content minmax(44px, 64px) max-content;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.pomodoro-break-settings label span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.pomodoro-break-settings input {
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--field);
+}
+
+.pomodoro-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pomodoro-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.pomodoro-toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--subtle);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.pomodoro-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease;
+}
+
+.pomodoro-toggle input:checked + .pomodoro-toggle-track {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pomodoro-toggle input:checked + .pomodoro-toggle-track .pomodoro-toggle-thumb {
+  transform: translateX(14px);
+  background: var(--accent);
+}
+
+.pomodoro-toggle input:focus-visible + .pomodoro-toggle-track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.time-inputs label {
+  display: grid;
+  gap: 5px;
+}
+
+.time-inputs input {
+  min-height: 42px;
+  padding: 6px 8px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.preset-button,
+.secondary-button,
+.primary-button {
+  min-height: 40px;
+  border-radius: 7px;
+  font-weight: 700;
+}
+
+.preset-button,
+.secondary-button {
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: var(--panel);
+}
+
+.control-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.9fr 1.5fr;
+  gap: 8px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--subtle-soft);
+}
+
+#start-pause-button,
+#next-task-button {
+  min-width: 0;
+  overflow-wrap: normal;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+
+#start-pause-button {
+  white-space: pre;
+}
+
+#next-task-button {
+  white-space: nowrap;
+}

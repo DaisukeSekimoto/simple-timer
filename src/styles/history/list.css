@@ -1,0 +1,70 @@
+.history-filters {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.history-date-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.history-date-fields.is-calendar-enabled {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.history-date-fields > [hidden] {
+  display: none;
+}
+
+.unit-toggle {
+  display: flex;
+  min-height: 42px;
+  padding: 3px;
+  border-radius: 7px;
+  background: var(--subtle);
+}
+
+.unit-button,
+.work-summary-unit-button {
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.unit-button.is-active,
+.work-summary-unit-button.is-active {
+  color: var(--text);
+  background: var(--field);
+}
+
+.history-list {
+  min-height: 100px;
+  overflow: visible;
+  border-top: 1px solid var(--line);
+}
+
+.history-item.is-read-only {
+  opacity: 0.9;
+}
+
+#edit-history-dialog.is-read-only input,
+#edit-history-dialog.is-read-only textarea {
+  cursor: text;
+  color: var(--text);
+  background: var(--subtle-soft);
+}
+
+#edit-history-dialog.is-read-only .form-error {
+  color: var(--muted);
+}
+
+#edit-history-dialog.is-read-only .edit-history-actions {
+  display: none;
+}

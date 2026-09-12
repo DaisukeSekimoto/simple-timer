@@ -1,0 +1,37 @@
+@media (max-width: 360px) {
+  .app {
+    padding: 10px;
+  }
+
+  .timer-form,
+  .control-row {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .control-row {
+    grid-template-columns: 1fr;
+  }
+
+  .history-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .history-date-fields.is-calendar-enabled {
+    grid-template-columns: 1fr;
+  }
+
+  .history-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-memo-section {
+    grid-template-columns: 1fr;
+  }
+
+  .preset-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 履歴から計測を再開しているタイマーと履歴を識別する */

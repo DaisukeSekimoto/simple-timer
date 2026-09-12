@@ -1,14 +1,22 @@
+image: node:22
+
 stages:
+  - test
   - deploy
+
+validate:
+  stage: test
+  script:
+    - npm ci
+    - npm run check
+    - npm test
 
 deploy-pages:
   stage: deploy
-
   script:
-    - echo "Deploy GitLab Pages"
-
+    - npm ci
+    - npm run build:site
   pages:
-    publish: .
-
+    publish: dist
   rules:
     - if: '$CI_COMMIT_BRANCH == "pages"'

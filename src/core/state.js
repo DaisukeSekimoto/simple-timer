@@ -1,0 +1,33 @@
+import {
+  DEFAULT_COUNTDOWN_SECONDS,
+  DEFAULT_POMODORO_BREAK_MS,
+  MODES,
+} from "./constants.js";
+
+export const state = {
+  mode: MODES.COUNTDOWN,
+  isRunning: false,
+  startedAt: 0,
+  elapsedBeforeStartMs: 0,
+  countdownSessionStartElapsedMs: 0,
+  countdownDurationMs: DEFAULT_COUNTDOWN_SECONDS * 1000,
+  pomodoroEnabled: false,
+  pomodoroPhase: "work",
+  pomodoroPhaseElapsedBeforeStartMs: 0,
+  pomodoroBreakDurationMs: DEFAULT_POMODORO_BREAK_MS,
+  pomodoroPlannedBreakCount: -1,
+  pomodoroCompletedBreakCount: 0,
+  pomodoroFinalWorkDurationMs: 0,
+  taskName: "",
+  taskMemo: "",
+  firstStartedAt: 0,
+  resumedRecordId: "",
+  finishedAt: 0,
+  hasStarted: false,
+  isMinimized: false,
+  records: [],
+  historyUnit: "minutes",
+  timerTabs: [],
+  activeTimerId: "",
+  nextTimerNumber: 1,
+};
