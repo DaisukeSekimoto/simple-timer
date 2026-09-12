@@ -11,6 +11,7 @@ const result = await build({
   bundle: true,
   format: "iife",
   target: ["es2022"],
+  charset: "utf8",
   outdir: "assets",
   write: false,
   legalComments: "none",

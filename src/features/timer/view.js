@@ -55,7 +55,7 @@ export function updateStatus() {
     getCountdownSessionElapsedMs() === 0;
   if (isAwaitingCountdownStop()) {
     elements.statusText.textContent =
-      "0秒になりました。停止ボタンを押してください";
+      "0秒になりました。停止ボタンを押して下さい。";
   } else if (isPomodoroActive() && state.isRunning) {
     elements.statusText.textContent =
       state.pomodoroPhase === "work" ? "作業中" : "休憩中";

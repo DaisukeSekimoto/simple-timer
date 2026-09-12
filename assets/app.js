@@ -125,7 +125,7 @@
       day: "numeric",
       weekday: "short"
     }).format(date);
-    return dateKey === localDateKey() ? `${label}\uFF08\u672C\u65E5\uFF09` : label;
+    return dateKey === localDateKey() ? `${label}（本日）` : label;
   }
   function now() {
     return Date.now();
@@ -147,7 +147,7 @@
     return parts.map((part) => String(part).padStart(2, "0")).join(":");
   }
   function formatDurationForUnit(milliseconds, unit = "minutes") {
-    if (unit === "minutes") return `${Math.round(milliseconds / 6e4)}\u5206`;
+    if (unit === "minutes") return `${Math.round(milliseconds / 6e4)}分`;
     return formatTime(milliseconds);
   }
   function formatHistoryClock(date) {
@@ -161,7 +161,7 @@
     const addedAt = new Date(record.createdAt);
     if (Number.isNaN(addedAt.getTime())) return "";
     const storedStartedAt = new Date(record.firstStartedAt);
-    return Number.isNaN(storedStartedAt.getTime()) ? `\uFF5E${formatHistoryClock(addedAt)}` : `${formatHistoryClock(storedStartedAt)}\uFF5E${formatHistoryClock(addedAt)}`;
+    return Number.isNaN(storedStartedAt.getTime()) ? `～${formatHistoryClock(addedAt)}` : `${formatHistoryClock(storedStartedAt)}～${formatHistoryClock(addedAt)}`;
   }
   function calculateWorkDurationMs(clockIn, clockOut) {
     if (!/^\d{2}:\d{2}$/.test(clockIn) || !/^\d{2}:\d{2}$/.test(clockOut))
@@ -458,12 +458,12 @@
     const minutes = readDurationPart(minutesInput);
     const seconds = readDurationPart(secondsInput);
     if ([hours, minutes, seconds].includes(null)) {
-      errorElement.textContent = "\u4F5C\u696D\u6642\u9593\u306F0\u4EE5\u4E0A\u306E\u6574\u6570\u3067\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      errorElement.textContent = "作業時間は0以上の整数で入力してください";
       return null;
     }
     const totalSeconds = hours * 3600 + minutes * 60 + seconds;
     if (!Number.isSafeInteger(totalSeconds) || totalSeconds > Number.MAX_SAFE_INTEGER / 1e3) {
-      errorElement.textContent = "\u4F5C\u696D\u6642\u9593\u306E\u5024\u304C\u5927\u304D\u3059\u304E\u307E\u3059";
+      errorElement.textContent = "作業時間の値が大きすぎます";
       return null;
     }
     setDurationInputValues(inputs, totalSeconds * 1e3);
@@ -548,20 +548,20 @@
   function parseHistoryTimeRange(recordDate, startTime, endTime, errorElement) {
     if (!startTime && !endTime) return false;
     if (!startTime || !endTime) {
-      errorElement.textContent = "\u6642\u523B\u3092\u6307\u5B9A\u3059\u308B\u5834\u5408\u306F\u958B\u59CB\u3068\u7D42\u4E86\u306E\u4E21\u65B9\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      errorElement.textContent = "時刻を指定する場合は開始と終了の両方を入力してください";
       return null;
     }
     const startDate = /* @__PURE__ */ new Date(`${recordDate}T${startTime}`);
     const endDate = /* @__PURE__ */ new Date(`${recordDate}T${endTime}`);
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      errorElement.textContent = "\u958B\u59CB\u6642\u523B\u3068\u7D42\u4E86\u6642\u523B\u3092\u6B63\u3057\u304F\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      errorElement.textContent = "開始時刻と終了時刻を正しく入力してください";
       return null;
     }
     if (startDate.getTime() > endDate.getTime())
       startDate.setDate(startDate.getDate() - 1);
     const durationMs = endDate.getTime() - startDate.getTime();
     if (!Number.isSafeInteger(durationMs) || durationMs < 1e3) {
-      errorElement.textContent = "\u7D42\u4E86\u6642\u523B\u306F\u958B\u59CB\u6642\u523B\u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044";
+      errorElement.textContent = "終了時刻は開始時刻より後にしてください";
       return null;
     }
     errorElement.textContent = "";
@@ -579,7 +579,7 @@
       timeRangeDurationMs: timeRange.durationMs,
       save
     };
-    elements.durationConflictMessage.textContent = `\u5165\u529B\u3057\u305F\u4F5C\u696D\u6642\u9593\u306F ${formatTime(enteredDurationMs)}\u3001\u958B\u59CB\u30FB\u7D42\u4E86\u304B\u3089\u8A08\u7B97\u3057\u305F\u6642\u9593\u306F ${formatTime(timeRange.durationMs)} \u3067\u3059\u3002`;
+    elements.durationConflictMessage.textContent = `入力した作業時間は ${formatTime(enteredDurationMs)}、開始・終了から計算した時間は ${formatTime(timeRange.durationMs)} です。`;
     elements.durationConflictDialog.showModal();
     window.setTimeout(() => elements.useTimeRangeDurationButton.focus(), 0);
   }
@@ -841,7 +841,7 @@
   // src/features/timer/tabs.js
   function timerTabLabel(tab) {
     const name = tab.id === state.activeTimerId ? state.taskName : tab.taskName;
-    return name.trim() || `\u30BF\u30A4\u30DE\u30FC ${tab.number}`;
+    return name.trim() || `タイマー ${tab.number}`;
   }
   function isTimerTabOvertime(tab) {
     if (!tab || tab.mode !== MODES.COUNTDOWN || !tab.isRunning) return false;
@@ -899,8 +899,8 @@
         closeButton.type = "button";
         closeButton.className = "timer-tab-close";
         closeButton.dataset.closeTimerId = tab.id;
-        closeButton.setAttribute("aria-label", `${timerTabLabel(tab)}\u3092\u9589\u3058\u308B`);
-        closeButton.textContent = "\xD7";
+        closeButton.setAttribute("aria-label", `${timerTabLabel(tab)}を閉じる`);
+        closeButton.textContent = "×";
         item.append(closeButton);
       }
       elements.timerTabList.append(item);
@@ -955,8 +955,8 @@
     const isStart = action.type === "start";
     const isSelect = action.type === "select";
     const runningTab = isStart ? state.timerTabs.find((tab) => tab.id === action.runningTimerId) : null;
-    elements.timerNavigationConfirmMessage.textContent = isStart ? `\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u3067\u52D5\u4F5C\u4E2D\u306E\u300C${timerTabLabel(runningTab)}\u300D\u3092\u4E00\u6642\u505C\u6B62\u3057\u3066\u3001\u3053\u306E\u30BF\u30A4\u30DE\u30FC\u3092\u958B\u59CB\u3057\u307E\u3059\u304B\uFF1F` : isSelect ? "\u5225\u306E\u30BF\u30A4\u30DE\u30FC\u30BF\u30D6\u3078\u79FB\u52D5\u3057\u307E\u3059\u3002\u8A08\u6E2C\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u306F\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u3067\u7D99\u7D9A\u3057\u307E\u3059\u3002" : "\u65B0\u3057\u3044\u30BF\u30A4\u30DE\u30FC\u30BF\u30D6\u3092\u4F5C\u6210\u3057\u307E\u3059\u3002\u8A08\u6E2C\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u306F\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u3067\u7D99\u7D9A\u3057\u307E\u3059\u3002";
-    elements.confirmTimerNavigationButton.textContent = isStart ? "\u4E00\u6642\u505C\u6B62\u3057\u3066\u958B\u59CB" : isSelect ? "\u79FB\u52D5" : "\u4F5C\u6210";
+    elements.timerNavigationConfirmMessage.textContent = isStart ? `バックグラウンドで計測中の「${timerTabLabel(runningTab)}」を一時停止して、このタイマーを開始しますか？` : "";
+    elements.confirmTimerNavigationButton.textContent = isStart ? "一時停止して開始" : isSelect ? "移動" : "作成";
     elements.timerNavigationConfirmOverlay.hidden = false;
     elements.confirmTimerNavigationButton.focus();
   }
@@ -1019,7 +1019,7 @@
     timerSession.timerTabsSignature = "";
     saveState();
     render();
-    showToast("\u30BF\u30A4\u30DE\u30FC\u30BF\u30D6\u3092\u524A\u9664\u3057\u307E\u3057\u305F", () => {
+    showToast("タイマータブを削除しました", () => {
       state.timerTabs.splice(
         Math.min(removedIndex, state.timerTabs.length),
         0,
@@ -1032,7 +1032,7 @@
       timerSession.timerTabsSignature = "";
       saveState();
       render();
-      showToast("\u30BF\u30A4\u30DE\u30FC\u30BF\u30D6\u3092\u5143\u306B\u623B\u3057\u307E\u3057\u305F");
+      showToast("タイマータブを元に戻しました。");
     });
   }
   function closeTimerTabConfirm() {
@@ -1059,7 +1059,7 @@
     }
     timerSession.pendingCloseTimerId = timerId;
     timerSession.timerTabConfirmPreviousFocus = elements.app.ownerDocument.activeElement;
-    elements.timerTabConfirmMessage.textContent = `\u300C${timerTabLabel(tab)}\u300D\u306F\u958B\u59CB\u6E08\u307F\u3067\u3059\u3002\u8A08\u6E2C\u5185\u5BB9\u3092\u7834\u68C4\u3057\u3066\u524A\u9664\u3057\u3066\u3082\u3088\u308D\u3057\u3044\u3067\u3059\u304B\uFF1F`;
+    elements.timerTabConfirmMessage.textContent = `「${timerTabLabel(tab)}」は開始ずみです。計測内容を破棄して削除してもよろしいですか？`;
     elements.timerTabConfirmOverlay.hidden = false;
     elements.confirmTimerTabDeleteButton.focus();
   }
@@ -1089,8 +1089,8 @@
       String(!state.pomodoroEnabled)
     );
     elements.pomodoroBreakInput.disabled = !state.pomodoroEnabled;
-    elements.countdownDurationButton.querySelector("span").textContent = state.pomodoroEnabled ? "\u4F5C\u696D\u6642\u9593\uFF081\u56DE\uFF09" : "\u4F5C\u696D\u6642\u9593";
-    elements.countdownWorkDurationLegend.textContent = state.pomodoroEnabled ? "\u4F5C\u696D\u6642\u9593\uFF081\u56DE\uFF09" : "\u4F5C\u696D\u6642\u9593";
+    elements.countdownDurationButton.querySelector("span").textContent = state.pomodoroEnabled ? "作業時間（1回）" : "作業時間";
+    elements.countdownWorkDurationLegend.textContent = state.pomodoroEnabled ? "作業時間（1回）" : "作業時間";
     elements.untilTimePomodoroSettings.hidden = !state.pomodoroEnabled;
     elements.untilTimePomodoroHelp.hidden = !state.pomodoroEnabled;
     elements.countdownDialogPomodoroInput.checked = state.pomodoroEnabled;
@@ -1098,16 +1098,16 @@
   function updateStatus() {
     const isCountdownWaiting = state.mode === MODES.COUNTDOWN && state.elapsedBeforeStartMs > 0 && getCountdownSessionElapsedMs() === 0;
     if (isAwaitingCountdownStop()) {
-      elements.statusText.textContent = "0\u79D2\u306B\u306A\u308A\u307E\u3057\u305F\u3002\u505C\u6B62\u30DC\u30BF\u30F3\u3092\u62BC\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.statusText.textContent = "0秒になりました。停止ボタンを押して下さい。";
     } else if (isPomodoroActive() && state.isRunning) {
-      elements.statusText.textContent = state.pomodoroPhase === "work" ? "\u4F5C\u696D\u4E2D" : "\u4F11\u61A9\u4E2D";
+      elements.statusText.textContent = state.pomodoroPhase === "work" ? "作業中" : "休憩中";
     } else if (isPomodoroActive() && state.pomodoroPhaseElapsedBeforeStartMs > 0) {
-      elements.statusText.textContent = state.pomodoroPhase === "work" ? "\u4F5C\u696D\u3092\u4E00\u6642\u505C\u6B62\u4E2D" : "\u4F11\u61A9\u3092\u4E00\u6642\u505C\u6B62\u4E2D";
-    } else if (state.finishedAt) elements.statusText.textContent = "\u5B8C\u4E86";
-    else if (state.isRunning) elements.statusText.textContent = "\u8A08\u6E2C\u4E2D";
+      elements.statusText.textContent = state.pomodoroPhase === "work" ? "作業を一時停止中" : "休憩を一時停止中";
+    } else if (state.finishedAt) elements.statusText.textContent = "完了";
+    else if (state.isRunning) elements.statusText.textContent = "計測中";
     else if (state.elapsedBeforeStartMs > 0 && !isCountdownWaiting)
-      elements.statusText.textContent = "\u4E00\u6642\u505C\u6B62\u4E2D";
-    else elements.statusText.textContent = "\u5F85\u6A5F\u4E2D";
+      elements.statusText.textContent = "一時停止中";
+    else elements.statusText.textContent = "待機中";
   }
   function isFinishedCountdown() {
     return state.mode === MODES.COUNTDOWN && !state.pomodoroEnabled && !state.isRunning && state.finishedAt > 0;
@@ -1157,35 +1157,35 @@
       markCountdownReachedZero();
     }
     updateDocumentTitle();
-    elements.taskNameDisplay.textContent = state.taskName || "\u30BF\u30B9\u30AF\u540D\u3092\u5165\u529B";
+    elements.taskNameDisplay.textContent = state.taskName || "タスク名を入力";
     const measurementMs = getDisplayMs();
-    const measurementLabel = isAwaitingCountdownStop() ? "\u8D85\u904E" : state.mode === MODES.STOPWATCH ? "\u8A08\u6E2C" : isPomodoroActive() ? state.pomodoroPhase === "work" ? "\u4F5C\u696D \u6B8B\u308A" : "\u4F11\u61A9 \u6B8B\u308A" : "\u6B8B\u308A";
+    const measurementLabel = isAwaitingCountdownStop() ? "超過" : state.mode === MODES.STOPWATCH ? "計測" : isPomodoroActive() ? state.pomodoroPhase === "work" ? "作業 残り" : "休憩 残り" : "残り";
     const measurementText = isAwaitingCountdownStop() ? `+${formatTime(getCountdownOvertimeMs())}` : formatTime(
       measurementMs,
       state.mode === MODES.COUNTDOWN ? "ceil" : "floor"
     );
     const showClockAsPrimary = getPrimaryTimeDisplay() === "clock";
     elements.timeDisplay.textContent = showClockAsPrimary ? timerSession.currentClockText : measurementText;
-    elements.secondaryTimeDisplay.textContent = showClockAsPrimary ? `${measurementLabel} ${measurementText}` : `\u73FE\u5728 ${timerSession.currentClockText}`;
+    elements.secondaryTimeDisplay.textContent = showClockAsPrimary ? `${measurementLabel} ${measurementText}` : `現在 ${timerSession.currentClockText}`;
     elements.cumulativeTimeDisplay.hidden = state.mode !== MODES.COUNTDOWN;
     elements.timeMetaRow.hidden = false;
-    elements.cumulativeTimeDisplay.textContent = `\u4F5C\u696D\u6642\u9593 ${formatTime(getElapsedMs())}`;
+    elements.cumulativeTimeDisplay.textContent = `作業時間 ${formatTime(getElapsedMs())}`;
     elements.pomodoroPhaseDisplay.hidden = !isPomodoroActive();
     const plannedWorkCount = state.pomodoroPlannedBreakCount >= 0 ? state.pomodoroPlannedBreakCount + 1 : 0;
     const currentWorkNumber = Math.min(
       state.pomodoroCompletedBreakCount + 1,
       plannedWorkCount || Infinity
     );
-    elements.pomodoroPhaseDisplay.textContent = state.pomodoroPhase === "work" ? plannedWorkCount ? `\u4F5C\u696D ${currentWorkNumber}/${plannedWorkCount}` : "\u4F5C\u696D" : plannedWorkCount ? `\u4F11\u61A9 ${state.pomodoroCompletedBreakCount + 1}/${state.pomodoroPlannedBreakCount}` : "\u4F11\u61A9\uFF08\u4F5C\u696D\u6642\u9593\u5916\uFF09";
+    elements.pomodoroPhaseDisplay.textContent = state.pomodoroPhase === "work" ? plannedWorkCount ? `作業 ${currentWorkNumber}/${plannedWorkCount}` : "作業" : plannedWorkCount ? `休憩 ${state.pomodoroCompletedBreakCount + 1}/${state.pomodoroPlannedBreakCount}` : "休憩（作業時間外）";
     elements.pomodoroPhaseDisplay.classList.toggle(
       "is-break",
       state.pomodoroPhase === "break"
     );
     const canResumeCurrentSession = isPomodoroActive() ? state.pomodoroPhaseElapsedBeforeStartMs > 0 : state.mode === MODES.STOPWATCH ? state.elapsedBeforeStartMs > 0 : getCountdownSessionElapsedMs() > 0;
-    const primaryActionLabel = isAwaitingCountdownStop() ? "\u505C\u6B62" : isFinishedCountdown() ? "\u540C\u3058\u30BF\u30B9\u30AF\u3067\u8A08\u6E2C" : state.isRunning ? "\u4E00\u6642\u505C\u6B62" : isPomodoroActive() && state.pomodoroPhase === "break" ? state.pomodoroPhaseElapsedBeforeStartMs > 0 ? "\u4F11\u61A9\u518D\u958B" : "\u4F11\u61A9\u958B\u59CB" : canResumeCurrentSession ? "\u518D\u958B" : "\u958B\u59CB";
+    const primaryActionLabel = isAwaitingCountdownStop() ? "停止" : isFinishedCountdown() ? "同じタスクで計測" : state.isRunning ? "一時停止" : isPomodoroActive() && state.pomodoroPhase === "break" ? state.pomodoroPhaseElapsedBeforeStartMs > 0 ? "休憩再開" : "休憩開始" : canResumeCurrentSession ? "再開" : "開始";
     elements.startPauseButton.textContent = primaryActionLabel;
-    elements.compactStartPauseButton.textContent = isAwaitingCountdownStop() ? "\u505C\u6B62" : isFinishedCountdown() ? "\u540C\u3058\u30BF\u30B9\u30AF" : state.isRunning ? "\u4E00\u6642\u505C\u6B62" : isPomodoroActive() && state.pomodoroPhase === "break" ? state.pomodoroPhaseElapsedBeforeStartMs > 0 ? "\u4F11\u61A9\u518D\u958B" : "\u4F11\u61A9\u958B\u59CB" : canResumeCurrentSession ? "\u518D\u958B" : "\u958B\u59CB";
-    elements.resetButton.textContent = isPomodoroActive() && state.pomodoroPhase === "break" && (state.isRunning || state.pomodoroPhaseElapsedBeforeStartMs > 0) ? "\u4F11\u61A9\u7D42\u4E86" : "\u30EA\u30BB\u30C3\u30C8";
+    elements.compactStartPauseButton.textContent = isAwaitingCountdownStop() ? "停止" : isFinishedCountdown() ? "同じタスク" : state.isRunning ? "一時停止" : isPomodoroActive() && state.pomodoroPhase === "break" ? state.pomodoroPhaseElapsedBeforeStartMs > 0 ? "休憩再開" : "休憩開始" : canResumeCurrentSession ? "再開" : "開始";
+    elements.resetButton.textContent = isPomodoroActive() && state.pomodoroPhase === "break" && (state.isRunning || state.pomodoroPhaseElapsedBeforeStartMs > 0) ? "休憩終了" : "リセット";
     elements.panel.classList.toggle("is-finished", state.finishedAt > 0);
     elements.panel.classList.toggle(
       "is-history-resumed",
@@ -1225,7 +1225,7 @@
       "is-minimized-countdown-overtime",
       state.isMinimized && isPopupContext() && isAwaitingCountdownStop()
     );
-    elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "\u25A1" : "\u2212";
+    elements.minimizeButton.querySelector("span").textContent = state.isMinimized ? "□" : "−";
     updateModeUi();
     updateStatus();
     scheduleFitControlButtonText();
@@ -1254,21 +1254,21 @@
   }
   function applyUntilTimeToInputs() {
     if (!elements.untilTimeInput.value) {
-      elements.untilTimeStatus.textContent = "\u7D42\u4E86\u6642\u523B\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
+      elements.untilTimeStatus.textContent = "終了時刻を入力してください。";
       return;
     }
     const [hours, minutes] = elements.untilTimeInput.value.split(":").map(Number);
     if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
-      elements.untilTimeStatus.textContent = "\u7D42\u4E86\u6642\u523B\u3092\u6B63\u3057\u304F\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002";
+      elements.untilTimeStatus.textContent = "終了時刻を正しく入力してください。";
       return;
     }
     const current = /* @__PURE__ */ new Date();
     const target = new Date(current);
     target.setHours(hours, minutes, 0, 0);
-    let dayLabel = "\u672C\u65E5";
+    let dayLabel = "本日";
     if (target.getTime() <= current.getTime()) {
       target.setDate(target.getDate() + 1);
-      dayLabel = "\u7FCC\u65E5";
+      dayLabel = "翌日";
     }
     const durationSeconds = Math.max(
       1,
@@ -1295,14 +1295,14 @@
         finalWorkSeconds,
         firstWorkSeconds
       };
-      elements.untilTimeStatus.textContent = `\u2192 \u4F5C\u696D ${formatTime(workUnitSeconds * 1e3)}\u5358\u4F4D
-  \u4F11\u61A9 ${breakMinutes}\u5206 \xD7 ${breakCount}\u56DE
-  \u6700\u7D42\u4F5C\u696D ${formatTime(finalWorkSeconds * 1e3)}`;
+      elements.untilTimeStatus.textContent = `→ 作業 ${formatTime(workUnitSeconds * 1e3)}単位
+  休憩 ${breakMinutes}分 × ${breakCount}回
+  最終作業 ${formatTime(finalWorkSeconds * 1e3)}`;
       return;
     }
     timerSession.pendingUntilPomodoroPlan = null;
     setCountdownDurationInputs(durationSeconds);
-    elements.untilTimeStatus.textContent = `${dayLabel} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}\u307E\u3067\uFF08\u6B8B\u308A ${formatTime(durationSeconds * 1e3)}\uFF09`;
+    elements.untilTimeStatus.textContent = `${dayLabel} ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}まで（残り ${formatTime(durationSeconds * 1e3)}）`;
   }
   function syncInputsFromDuration() {
     const totalSeconds = Math.round(state.countdownDurationMs / 1e3);
@@ -1349,7 +1349,7 @@
       saveState();
       render();
       showToast(
-        state.pomodoroEnabled ? "\u6B8B\u308A\u6642\u9593\u3092\u7DAD\u6301\u3057\u3066\u30DD\u30E2\u30C9\u30FC\u30ED\u3092\u6709\u52B9\u306B\u3057\u307E\u3057\u305F" : "\u6B8B\u308A\u6642\u9593\u3092\u7DAD\u6301\u3057\u3066\u30DD\u30E2\u30C9\u30FC\u30ED\u3092\u7121\u52B9\u306B\u3057\u307E\u3057\u305F"
+        state.pomodoroEnabled ? "残り時間を維持してポモドーロを有効にしました" : "残り時間を維持してポモドーロを無効にしました"
       );
     });
     elements.countdownDialogPomodoroInput.addEventListener("change", () => {
@@ -1390,7 +1390,7 @@
       timerSession.pendingUntilPomodoroPlan = null;
       elements.countdownDurationDialog.close();
       showToast(
-        state.pomodoroEnabled && state.pomodoroPlannedBreakCount >= 0 ? "\u6307\u5B9A\u6642\u523B\u307E\u3067\u306E\u30DD\u30E2\u30C9\u30FC\u30ED\u3092\u8A2D\u5B9A\u3057\u307E\u3057\u305F" : "\u30AB\u30A6\u30F3\u30C8\u30C0\u30A6\u30F3\u6642\u9593\u3092\u5909\u66F4\u3057\u307E\u3057\u305F"
+        state.pomodoroEnabled && state.pomodoroPlannedBreakCount >= 0 ? "指定時刻までのポモドーロを設定しました" : "カウントダウン時間を変更しました"
       );
     });
     elements.countdownDurationDialog.addEventListener(
@@ -1434,7 +1434,7 @@
         state.finishedAt = now();
         saveState();
         render();
-        showToast("\u6307\u5B9A\u6642\u523B\u307E\u3067\u306E\u30DD\u30E2\u30C9\u30FC\u30ED\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F");
+        showToast("指定時刻までのポモドーロが完了しました");
         return;
       }
       state.pomodoroPhase = "break";
@@ -1452,7 +1452,7 @@
     saveState();
     render();
     showToast(
-      completedPhase === "work" ? "\u4F5C\u696D\u7D42\u4E86\u3067\u3059\u3002\u4F11\u61A9\u3092\u958B\u59CB\u3067\u304D\u307E\u3059" : "\u4F11\u61A9\u7D42\u4E86\u3067\u3059\u3002\u6B21\u306E\u4F5C\u696D\u3092\u958B\u59CB\u3067\u304D\u307E\u3059"
+      completedPhase === "work" ? "作業終了です。休憩を開始できます" : "休憩終了です。次の作業を開始できます"
     );
   }
   function finishPomodoroBreakEarly() {
@@ -1469,7 +1469,7 @@
     state.finishedAt = 0;
     saveState();
     render();
-    showToast("\u4F11\u61A9\u3092\u7D42\u4E86\u3057\u307E\u3057\u305F\u3002\u6B21\u306E\u4F5C\u696D\u3092\u958B\u59CB\u3067\u304D\u307E\u3059");
+    showToast("休憩を終了しました。次の作業を開始できます");
   }
 
   // src/features/timer/controls.js
@@ -1544,7 +1544,7 @@
     state.finishedAt = 0;
     saveState();
     render();
-    elements.statusText.textContent = "\u8FFD\u52A0\u3059\u308B\u6642\u9593\u3092\u9078\u629E\u3057\u3066\u958B\u59CB\u3057\u3066\u304F\u3060\u3055\u3044";
+    elements.statusText.textContent = "追加する時間を選択して開始してください";
   }
   function toggleTimer() {
     if (state.mode === MODES.COUNTDOWN && state.isRunning && getDisplayMs() <= 0 && !state.finishedAt) {
@@ -1613,7 +1613,7 @@
       resetTimer();
       return;
     }
-    elements.resetConfirmMessage.textContent = `\u73FE\u5728\u306E\u4F5C\u696D\u6642\u9593\u306F ${formatTime(elapsedMs)} \u3067\u3059\u3002`;
+    elements.resetConfirmMessage.textContent = `現在の作業時間は ${formatTime(elapsedMs)} です。`;
     elements.resetConfirmOverlay.hidden = false;
     elements.confirmResetButton.focus();
   }
@@ -1629,7 +1629,7 @@
     );
     const timerSnapshot = timerIndex >= 0 ? JSON.parse(JSON.stringify(state.timerTabs[timerIndex])) : null;
     resetTimer();
-    showToast("\u5C65\u6B74\u306B\u8FFD\u52A0\u305B\u305A\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F", () => {
+    showToast("履歴に追加せずリセットしました", () => {
       if (!timerSnapshot) return;
       const currentIndex = state.timerTabs.findIndex(
         (tab) => tab.id === timerSnapshot.id
@@ -1646,7 +1646,7 @@
       timerSession.timerTabsSignature = "";
       saveState();
       render();
-      showToast("\u30EA\u30BB\u30C3\u30C8\u524D\u306E\u72B6\u614B\u306B\u623B\u3057\u307E\u3057\u305F");
+      showToast("リセット前の状態に戻しました");
     });
   }
   function requestResetOrFinishBreak() {
@@ -1691,8 +1691,8 @@
     }
     timerSession.pendingMode = mode;
     timerSession.modeSwitchConfirmPreviousFocus = elements.app.ownerDocument.activeElement;
-    const modeName = mode === MODES.COUNTDOWN ? "\u30AB\u30A6\u30F3\u30C8\u30C0\u30A6\u30F3" : "\u30B9\u30C8\u30C3\u30D7\u30A6\u30A9\u30C3\u30C1";
-    elements.modeSwitchConfirmMessage.textContent = state.isRunning ? `\u73FE\u5728\u306E\u4F5C\u696D\u6642\u9593\u3092\u7DAD\u6301\u3057\u3001\u52D5\u4F5C\u4E2D\u306E\u30BF\u30A4\u30DE\u30FC\u3092\u4E00\u6642\u505C\u6B62\u3057\u3066\u300C${modeName}\u300D\u3078\u5207\u308A\u66FF\u3048\u3066\u3082\u3088\u308D\u3057\u3044\u3067\u3059\u304B\uFF1F` : `\u73FE\u5728\u306E\u4F5C\u696D\u6642\u9593\u3092\u7DAD\u6301\u3057\u305F\u307E\u307E\u300C${modeName}\u300D\u3078\u5207\u308A\u66FF\u3048\u3066\u3082\u3088\u308D\u3057\u3044\u3067\u3059\u304B\uFF1F`;
+    const modeName = mode === MODES.COUNTDOWN ? "カウントダウン" : "ストップウォッチ";
+    elements.modeSwitchConfirmMessage.textContent = state.isRunning ? `現在の作業時間を維持し、動作中のタイマーを一時停止して「${modeName}」へ切り替えてもよろしいですか？` : `現在の作業時間を維持したまま「${modeName}」へ切り替えてもよろしいですか？`;
     elements.modeSwitchConfirmOverlay.hidden = false;
     elements.confirmModeSwitchButton.focus();
   }
@@ -1724,12 +1724,12 @@
   function moveToNextTask() {
     const durationMs = getElapsedMs();
     if (!state.taskName.trim()) {
-      elements.statusText.textContent = "\u8A18\u9332\u3059\u308B\u30BF\u30B9\u30AF\u540D\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.statusText.textContent = "記録するタスク名を入力してください";
       openTaskDialog(true);
       return;
     }
     if (durationMs < 1e3) {
-      elements.statusText.textContent = "1\u79D2\u4EE5\u4E0A\u8A08\u6E2C\u3057\u3066\u304B\u3089\u8A18\u9332\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.statusText.textContent = "1秒以上計測してから記録してください";
       return;
     }
     const addedAt = now();
@@ -1759,8 +1759,8 @@
     saveRecords();
     if (isResumedHistory) {
       removeRecordedTimerTab(state.activeTimerId);
-      elements.statusText.textContent = "\u518D\u958B\u5143\u306E\u4F5C\u696D\u5C65\u6B74\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F";
-      showToast("\u518D\u958B\u5143\u306E\u4F5C\u696D\u5C65\u6B74\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F");
+      elements.statusText.textContent = "再開元の作業履歴を更新しました";
+      showToast("再開元の作業履歴を更新しました");
       return;
     }
     resetTimer();
@@ -1768,8 +1768,8 @@
     state.taskMemo = "";
     saveState();
     render();
-    elements.statusText.textContent = "\u4ECA\u65E5\u306E\u4F5C\u696D\u3068\u3057\u3066\u8A18\u9332\u3057\u307E\u3057\u305F";
-    showToast("\u4F5C\u696D\u5C65\u6B74\u306B\u8FFD\u52A0\u3057\u307E\u3057\u305F");
+    elements.statusText.textContent = "今日の作業として記録しました";
+    showToast("作業履歴に追加しました");
   }
   function getResumedRecordIds() {
     const resumedIds = new Set(
@@ -1849,10 +1849,10 @@
     ).sort((a, b) => a.distance - b.distance)[0];
     if (!similarName) return normalizedName;
     const shouldUnify = elements.app.ownerDocument.defaultView.confirm(
-      `\u5165\u529B\u3057\u305F\u300C${normalizedName}\u300D\u306F\u3001\u65E2\u5B58\u306E\u300C${similarName.existing}\u300D\u3068\u4F3C\u3066\u3044\u307E\u3059\u3002
+      `入力した「${normalizedName}」は、既存の「${similarName.existing}」と似ています。
 
-\u540C\u3058\u30BF\u30B9\u30AF\u3068\u3057\u3066\u65E2\u5B58\u540D\u306B\u7D71\u4E00\u3057\u307E\u3059\u304B\uFF1F
-OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30EB\uFF1A\u5225\u30BF\u30B9\u30AF\u3068\u3057\u3066\u4F7F\u7528`
+同じタスクとして既存名に統一しますか？
+OK：既存名に統一 ／ キャンセル：別タスクとして使用`
     );
     return shouldUnify ? similarName.existing : normalizedName;
   }
@@ -1874,7 +1874,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     if (!names.length) {
       const empty = document.createElement("p");
       empty.className = "empty-message";
-      empty.textContent = "\u5C65\u6B74\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093";
+      empty.textContent = "履歴はまだありません";
       list.append(empty);
       return;
     }
@@ -2160,7 +2160,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     availableDates.forEach((date) => {
       const option = document.createElement("option");
       option.value = date;
-      option.textContent = !storedDates.has(date) && date !== today ? `${formatHistoryDateLabel(date)}\uFF08\u672A\u767B\u9332\uFF09` : formatHistoryDateLabel(date);
+      option.textContent = !storedDates.has(date) && date !== today ? `${formatHistoryDateLabel(date)}（未登録）` : formatHistoryDateLabel(date);
       elements.historyDate.append(option);
     });
     elements.historyDate.value = availableDates.includes(preferredDate) ? preferredDate : today;
@@ -2179,7 +2179,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     if (!date) return;
     if (!canEditHistoryDate(date)) {
       historySession.dailyMemoDirty = false;
-      elements.dailyMemoStatus.textContent = "\u904E\u53BB\u306E\u65E5\u5225\u30E1\u30E2\u306F\u53C2\u7167\u306E\u307F\u3067\u3059";
+      elements.dailyMemoStatus.textContent = "過去の日別メモは参照のみです";
       return;
     }
     const memo = elements.dailyMemoInput.value.trim().slice(0, 1e3);
@@ -2187,11 +2187,11 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     else delete historySession.dailyMemos[date];
     saveDailyMemos();
     historySession.dailyMemoDirty = false;
-    elements.dailyMemoStatus.textContent = memo ? "\u4FDD\u5B58\u3057\u307E\u3057\u305F" : "\u7A7A\u306E\u30E1\u30E2\u3068\u3057\u3066\u4FDD\u5B58\u3057\u307E\u3057\u305F";
+    elements.dailyMemoStatus.textContent = memo ? "保存しました" : "空のメモとして保存しました";
     if (showFeedback) {
       window.setTimeout(() => {
         if (!historySession.dailyMemoDirty && elements.historyDialog.open && elements.historyDate.value === date) {
-          elements.dailyMemoStatus.textContent = "\u5165\u529B\u5185\u5BB9\u306F\u81EA\u52D5\u4FDD\u5B58\u3055\u308C\u307E\u3059";
+          elements.dailyMemoStatus.textContent = "入力内容は自動保存されます";
         }
       }, 1800);
     }
@@ -2199,7 +2199,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
   function scheduleDailyMemoSave() {
     if (elements.dailyMemoInput.readOnly) return;
     historySession.dailyMemoDirty = true;
-    elements.dailyMemoStatus.textContent = "\u672A\u4FDD\u5B58\u306E\u5909\u66F4\u304C\u3042\u308A\u307E\u3059\u2026";
+    elements.dailyMemoStatus.textContent = "未保存の変更があります…";
     window.clearTimeout(historySession.dailyMemoSaveId);
     historySession.dailyMemoSaveId = window.setTimeout(
       () => saveDailyMemoNow(),
@@ -2209,7 +2209,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
   function canCloseHistoryWithMemo() {
     if (!historySession.dailyMemoDirty) return true;
     const shouldSave = window.confirm(
-      "\u65E5\u5225\u30E1\u30E2\u306B\u672A\u4FDD\u5B58\u306E\u5909\u66F4\u304C\u3042\u308A\u307E\u3059\u3002\u4FDD\u5B58\u3057\u3066\u4F5C\u696D\u5C65\u6B74\u3092\u9589\u3058\u307E\u3059\u304B\uFF1F"
+      "日別メモに未保存の変更があります。保存して作業履歴を閉じますか？"
     );
     if (!shouldSave) return false;
     saveDailyMemoNow(false);
@@ -2227,7 +2227,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     historySession.editingRecord = record;
     const isResuming = isRecordBeingResumed(record);
     elements.editHistoryDialog.classList.toggle("is-read-only", !canEdit);
-    elements.editHistoryTitle.textContent = canEdit ? "\u4F5C\u696D\u5C65\u6B74\u3092\u7DE8\u96C6" : "\u4F5C\u696D\u5C65\u6B74\u306E\u8A73\u7D30";
+    elements.editHistoryTitle.textContent = canEdit ? "作業履歴を編集" : "作業履歴の詳細";
     elements.resumeHistoryButton.hidden = !canEdit || record.date !== localDateKey() || isResuming;
     elements.editDeleteButton.hidden = !canEdit || isResuming;
     elements.editHistorySubmitButton.hidden = !canEdit;
@@ -2265,7 +2265,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     ].forEach((input) => {
       input.readOnly = !canEdit;
     });
-    elements.editHistoryError.textContent = canEdit ? "" : "\u53C2\u7167\u5C02\u7528\u3067\u3059\u3002\u5185\u5BB9\u306E\u5909\u66F4\u30FB\u524A\u9664\u306F\u3067\u304D\u307E\u305B\u3093\u3002";
+    elements.editHistoryError.textContent = canEdit ? "" : "参照専用です。内容の変更・削除はできません。";
     elements.editHistoryDialog.showModal();
     window.setTimeout(() => {
       if (canEdit) elements.editTaskInput.focus();
@@ -2277,7 +2277,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     if (!historySession.editingRecord) return;
     if (!canEditHistoryDate(historySession.editingRecord.date)) {
       elements.editHistoryDialog.close();
-      showToast("\u7DE8\u96C6\u8A31\u53EF\u306E5\u5206\u9593\u304C\u7D42\u4E86\u3057\u307E\u3057\u305F");
+      showToast("編集許可の5分間が終了しました");
       return;
     }
     const taskName = resolveTaskName(elements.editTaskInput.value);
@@ -2291,7 +2291,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     );
     if (durationMs === null) return;
     if (!taskName) {
-      elements.editHistoryError.textContent = "\u30BF\u30B9\u30AF\u540D\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.editHistoryError.textContent = "タスク名を入力してください";
       return;
     }
     const timeRange = parseHistoryTimeRange(
@@ -2302,7 +2302,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     );
     if (timeRange === null) return;
     if (!timeRange && durationMs < 1e3) {
-      elements.editHistoryError.textContent = "\u4F5C\u696D\u6642\u9593\u30921\u79D2\u4EE5\u4E0A\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.editHistoryError.textContent = "作業時間を1秒以上入力してください";
       return;
     }
     const timingChanged = !historySession.editTimingSnapshot || elements.editStartTimeInput.value !== historySession.editTimingSnapshot.startTime || elements.editEndTimeInput.value !== historySession.editTimingSnapshot.endTime || durationMs !== historySession.editTimingSnapshot.durationMs;
@@ -2326,13 +2326,13 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       saveRecords();
       elements.editHistoryDialog.close();
       renderHistory();
-      showToast("\u4F5C\u696D\u5C65\u6B74\u3092\u5909\u66F4\u3057\u307E\u3057\u305F", () => {
+      showToast("作業履歴を変更しました", () => {
         const index = state.records.indexOf(editedRecord);
         if (index >= 0) state.records[index] = previousRecord;
         saveRecords();
         renderHistoryDateOptions(previousRecord.date);
         if (elements.historyDialog.open) renderHistory();
-        showToast("\u4F5C\u696D\u5C65\u6B74\u306E\u5909\u66F4\u3092\u5143\u306B\u623B\u3057\u307E\u3057\u305F");
+        showToast("作業履歴の変更を元に戻しました");
       });
     };
     if (timingChanged) {
@@ -2344,7 +2344,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
   function resumeFromHistory() {
     if (!historySession.editingRecord || historySession.editingRecord.date !== localDateKey())
       return;
-    elements.resumeHistoryConfirmMessage.textContent = `\u300C${historySession.editingRecord.taskName}\uFF08${formatRecordDuration(historySession.editingRecord.durationMs)}\uFF09\u300D\u306E\u8A08\u6E2C\u3092\u518D\u958B\u3057\u307E\u3059\u3002\u5C65\u6B74\u3078\u8FFD\u52A0\u3057\u305F\u3068\u304D\u306B\u5C65\u6B74\u3092\u66F4\u65B0\u3057\u307E\u3059\u3002`;
+    elements.resumeHistoryConfirmMessage.textContent = `「${historySession.editingRecord.taskName}（${formatRecordDuration(historySession.editingRecord.durationMs)}）」の計測を再開します。履歴へ追加したときに履歴を更新します。`;
     elements.resumeHistoryConfirmDialog.showModal();
   }
   function confirmResumeFromHistory() {
@@ -2352,7 +2352,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const record = historySession.editingRecord;
     if (isRecordBeingResumed(record)) {
       elements.resumeHistoryConfirmDialog.close();
-      showToast("\u3053\u306E\u5C65\u6B74\u306F\u3059\u3067\u306B\u8A08\u6E2C\u518D\u958B\u4E2D\u3067\u3059");
+      showToast("この履歴はすでに計測再開中です");
       return;
     }
     if (!record.id) {
@@ -2383,18 +2383,18 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     saveRecords();
     saveState();
     render();
-    showToast("\u958B\u59CB\u64CD\u4F5C\u3067\u518D\u958B\u3067\u304D\u307E\u3059");
+    showToast("開始操作で再開できます");
   }
   function deleteHistoryRecord(record) {
     if (!canEditHistoryDate(record.date)) {
-      showToast("\u904E\u53BB\u306E\u5C65\u6B74\u306F\u53C2\u7167\u306E\u307F\u3067\u3059");
+      showToast("過去の履歴は参照のみです");
       return;
     }
     const duration = formatRecordDuration(record.durationMs);
     historySession.pendingDeleteRecordId = record.id || "";
     historySession.pendingDeleteRecord = record;
     historySession.confirmPreviousFocus = elements.app.ownerDocument.activeElement;
-    elements.confirmMessage.textContent = `\u300C${record.taskName}\uFF08${duration}\uFF09\u300D\u3092\u524A\u9664\u3057\u307E\u3059\u3002`;
+    elements.confirmMessage.textContent = `「${record.taskName}（${duration}）」を削除します。`;
     elements.confirmOverlay.hidden = false;
     elements.confirmDeleteButton.focus();
   }
@@ -2415,7 +2415,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       return;
     if (historySession.pendingDeleteRecord && !canEditHistoryDate(historySession.pendingDeleteRecord.date)) {
       closeDeleteConfirm();
-      showToast("\u7DE8\u96C6\u8A31\u53EF\u306E5\u5206\u9593\u304C\u7D42\u4E86\u3057\u307E\u3057\u305F");
+      showToast("編集許可の5分間が終了しました");
       return;
     }
     const recordIndex = state.records.findIndex(
@@ -2432,7 +2432,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     saveRecords();
     renderHistoryDateOptions();
     renderHistory();
-    showToast("\u4F5C\u696D\u5C65\u6B74\u3092\u524A\u9664\u3057\u307E\u3057\u305F", () => {
+    showToast("作業履歴を削除しました", () => {
       state.records.splice(
         Math.min(recordIndex, state.records.length),
         0,
@@ -2441,7 +2441,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       saveRecords();
       renderHistoryDateOptions(removedRecord.date);
       if (elements.historyDialog.open) renderHistory();
-      showToast("\u4F5C\u696D\u5C65\u6B74\u3092\u5143\u306B\u623B\u3057\u307E\u3057\u305F");
+      showToast("作業履歴を元に戻しました");
     });
   }
   function openHistoryDialog() {
@@ -2471,7 +2471,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const taskName = resolveTaskName(elements.manualTaskInput.value);
     const recordDate = elements.manualDate.value;
     if (!canEditHistoryDate(recordDate)) {
-      elements.manualHistoryError.textContent = "\u3053\u306E\u65E5\u4ED8\u306E\u5C65\u6B74\u7DE8\u96C6\u306F\u8A31\u53EF\u3055\u308C\u3066\u3044\u307E\u305B\u3093";
+      elements.manualHistoryError.textContent = "この日付の履歴編集は許可されていません";
       return;
     }
     const timeRange = parseHistoryTimeRange(
@@ -2484,11 +2484,11 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const enteredDurationMs = normalizeManualDurationInputs();
     if (enteredDurationMs === null) return;
     if (!timeRange && enteredDurationMs < 1e3) {
-      elements.manualHistoryError.textContent = "\u4F5C\u696D\u6642\u9593\u30921\u79D2\u4EE5\u4E0A\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.manualHistoryError.textContent = "作業時間を1秒以上入力してください";
       return;
     }
     if (!taskName) {
-      elements.manualHistoryError.textContent = "\u30BF\u30B9\u30AF\u540D\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.manualHistoryError.textContent = "タスク名を入力してください";
       return;
     }
     const save = (durationMs) => {
@@ -2511,7 +2511,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       renderHistoryDateOptions(recordDate);
       renderHistory();
       elements.addHistoryDialog.close();
-      elements.statusText.textContent = "\u4F5C\u696D\u5C65\u6B74\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F";
+      elements.statusText.textContent = "作業履歴を追加しました";
     };
     resolveDurationConflict(enteredDurationMs, timeRange, save);
   }
@@ -2630,18 +2630,18 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const table = document.createElement("table");
     table.className = "history-summary-table";
     const thead = document.createElement("thead");
-    thead.innerHTML = '<tr><th scope="col">\u30BF\u30B9\u30AF\u540D</th><th scope="col">\u4EF6\u6570</th><th scope="col">\u5408\u8A08</th></tr>';
+    thead.innerHTML = '<tr><th scope="col">タスク名</th><th scope="col">件数</th><th scope="col">合計</th></tr>';
     const tbody = document.createElement("tbody");
     groupTaskRecords(records).forEach((group) => {
       const row = document.createElement("tr");
       row.tabIndex = 0;
       row.setAttribute("role", "button");
-      row.setAttribute("aria-label", `${group.taskName}\u306E\u30E1\u30E2\u3092\u8868\u793A`);
+      row.setAttribute("aria-label", `${group.taskName}のメモを表示`);
       const name = document.createElement("th");
       name.scope = "row";
       name.textContent = group.taskName;
       const count = document.createElement("td");
-      count.textContent = `${group.records.length}\u4EF6`;
+      count.textContent = `${group.records.length}件`;
       const duration = document.createElement("td");
       duration.textContent = formatDurationForUnit(group.durationMs, unit);
       const open = () => openTaskMemoDialog(group.taskName, group.records, unit);
@@ -2659,8 +2659,8 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     return table;
   }
   function renderTaskMemoDialog() {
-    elements.taskMemoTitle.textContent = `${historySession.activeTaskMemoName}\u306E\u30E1\u30E2`;
-    elements.taskMemoCount.textContent = `${historySession.activeTaskMemoRecords.length}\u4EF6`;
+    elements.taskMemoTitle.textContent = `${historySession.activeTaskMemoName}のメモ`;
+    elements.taskMemoCount.textContent = `${historySession.activeTaskMemoRecords.length}件`;
     const totalDurationMs = historySession.activeTaskMemoRecords.reduce(
       (total, record) => total + record.durationMs,
       0
@@ -2669,19 +2669,19 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       totalDurationMs,
       historySession.workSummaryUnit
     );
-    elements.taskMemoTotal.textContent = `\u5408\u8A08 ${totalText}`;
+    elements.taskMemoTotal.textContent = `合計 ${totalText}`;
     elements.taskMemoTotal.setAttribute(
       "aria-label",
-      `\u5408\u8A08 ${totalText}\u3002\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u6642\u9593\u8868\u8A18\u3092\u5207\u308A\u66FF\u3048`
+      `合計 ${totalText}。クリックして時間表記を切り替え`
     );
     elements.taskMemoList.replaceChildren();
     historySession.activeTaskMemoRecords.slice().sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).forEach((record) => {
       const item = document.createElement("article");
       item.className = "task-memo-item";
       const meta = document.createElement("strong");
-      meta.textContent = `${formatHistoryTimeRange(record) || record.date} \uFF0F ${formatDurationForUnit(record.durationMs, historySession.workSummaryUnit)}`;
+      meta.textContent = `${formatHistoryTimeRange(record) || record.date} ／ ${formatDurationForUnit(record.durationMs, historySession.workSummaryUnit)}`;
       const memo = document.createElement("p");
-      memo.textContent = record.memo || "\u30E1\u30E2\u306F\u3042\u308A\u307E\u305B\u3093";
+      memo.textContent = record.memo || "メモはありません";
       memo.classList.toggle("is-empty", !record.memo);
       item.append(meta, memo);
       elements.taskMemoList.append(item);
@@ -2697,7 +2697,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
   }
   function formatSignedDuration(milliseconds, unit = historySession.workSummaryUnit) {
     const displayedMs = unit === "minutes" ? Math.round(milliseconds / 6e4) * 6e4 : Math.trunc(milliseconds / 1e3) * 1e3;
-    const sign = displayedMs > 0 ? "+" : displayedMs < 0 ? "\u2212" : "\xB1";
+    const sign = displayedMs > 0 ? "+" : displayedMs < 0 ? "−" : "±";
     return `${sign}${formatDurationForUnit(Math.abs(displayedMs), unit)}`;
   }
   function openWorkSummaryDialog(dateKey) {
@@ -2744,9 +2744,9 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
         button.dataset.workSummaryUnit === historySession.workSummaryUnit
       );
     });
-    elements.workSummaryEditStatus.textContent = breakExceedsWork ? "\u4F11\u61A9\u6642\u9593\u304C\u62D8\u675F\u6642\u9593\u3092\u8D85\u3048\u3066\u3044\u307E\u3059\u3002\u52E4\u52D9\u6642\u9593\u306F0\u3068\u3057\u3066\u8868\u793A\u3057\u307E\u3059\u3002" : canEdit ? "\u51FA\u9000\u52E4\u6642\u9593\u3068\u4F11\u61A9\u6642\u9593\u306F\u3053\u306E\u7AEF\u672B\u306B\u4FDD\u5B58\u3055\u308C\u307E\u3059" : "\u904E\u53BB\u306E\u51FA\u9000\u52E4\u6642\u9593\u30FB\u4F11\u61A9\u6642\u9593\u306F\u53C2\u7167\u306E\u307F\u3067\u3059";
+    elements.workSummaryEditStatus.textContent = breakExceedsWork ? "休憩時間が拘束時間を超えています。勤務時間は0として表示します。" : canEdit ? "出退勤時間と休憩時間はこの端末に保存されます" : "過去の出退勤時間・休憩時間は参照のみです";
     elements.workSummaryEditStatus.classList.toggle("is-error", breakExceedsWork);
-    const emptyDuration = historySession.workSummaryUnit === "minutes" ? "--\u5206" : "--:--:--";
+    const emptyDuration = historySession.workSummaryUnit === "minutes" ? "--分" : "--:--:--";
     elements.workDurationValue.textContent = workMs === null ? emptyDuration : formatDurationForUnit(workMs, historySession.workSummaryUnit);
     elements.measuredDurationValue.textContent = formatDurationForUnit(
       measuredMs,
@@ -2774,7 +2774,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     else {
       const empty = document.createElement("p");
       empty.className = "empty-message";
-      empty.textContent = "\u3053\u306E\u65E5\u306E\u8A18\u9332\u306F\u3042\u308A\u307E\u305B\u3093";
+      empty.textContent = "この日の記録はありません";
       elements.workSummaryTaskTable.append(empty);
     }
   }
@@ -2784,7 +2784,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
   } = {}) {
     if (!historySession.workSummaryDateKey || !canEditHistoryDate(historySession.workSummaryDateKey)) {
       renderWorkSummary();
-      showToast("\u904E\u53BB\u306E\u51FA\u9000\u52E4\u6642\u9593\u306F\u53C2\u7167\u306E\u307F\u3067\u3059");
+      showToast("過去の出退勤時間は参照のみです");
       return;
     }
     const clockIn = elements.clockInInput.value;
@@ -2868,8 +2868,8 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       !isViewingToday && canEdit
     );
     elements.historyDateContext.hidden = isViewingToday;
-    elements.historyDateContext.textContent = canEdit ? "\u904E\u53BB\u306E\u5C65\u6B74\uFF08\u7DE8\u96C6\u8A31\u53EF\u4E2D\uFF09" : "\u904E\u53BB\u306E\u5C65\u6B74\uFF08\u53C2\u7167\u306E\u307F\uFF09";
-    elements.historyHelp.textContent = canEdit ? "\u5404\u8A18\u9332\u3092\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3068\u5185\u5BB9\u306E\u5909\u66F4\u30FB\u524A\u9664\u304C\u3067\u304D\u307E\u3059\u3002" : "\u5404\u8A18\u9332\u3092\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3068\u8A73\u7D30\u3092\u78BA\u8A8D\u3067\u304D\u307E\u3059\u3002\u5909\u66F4\u30FB\u524A\u9664\u306F\u8A2D\u5B9A\u304B\u30895\u5206\u9593\u3060\u3051\u8A31\u53EF\u3067\u304D\u307E\u3059\u3002";
+    elements.historyDateContext.textContent = canEdit ? "過去の履歴（編集許可中）" : "過去の履歴（参照のみ）";
+    elements.historyHelp.textContent = canEdit ? "各記録をクリックすると内容の変更・削除ができます。" : "各記録をクリックすると詳細を確認できます。変更・削除は設定から5分間だけ許可できます。";
     elements.addHistoryButton.hidden = !canEdit;
     historySession.dailyMemoEditingDate = elements.historyDate.value;
     if (!keepCurrentDraft)
@@ -2877,7 +2877,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     elements.dailyMemoInput.readOnly = !canEdit;
     if (!keepCurrentDraft) {
       historySession.dailyMemoDirty = false;
-      elements.dailyMemoStatus.textContent = canEdit ? "\u5165\u529B\u5185\u5BB9\u306F\u81EA\u52D5\u4FDD\u5B58\u3055\u308C\u307E\u3059" : "\u904E\u53BB\u306E\u65E5\u5225\u30E1\u30E2\u306F\u53C2\u7167\u306E\u307F\u3067\u3059";
+      elements.dailyMemoStatus.textContent = canEdit ? "入力内容は自動保存されます" : "過去の日別メモは参照のみです";
     }
     elements.unitButtons.forEach(
       (button) => button.classList.toggle(
@@ -2890,7 +2890,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     if (!records.length) {
       const empty = document.createElement("p");
       empty.className = "empty-message";
-      empty.textContent = "\u3053\u306E\u65E5\u306E\u8A18\u9332\u306F\u3042\u308A\u307E\u305B\u3093";
+      empty.textContent = "この日の記録はありません";
       elements.historyList.append(empty);
       return;
     }
@@ -2909,12 +2909,12 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       const metadata = document.createElement("small");
       metadata.className = "history-item-meta";
       const timeRange = formatHistoryTimeRange(record);
-      metadata.textContent = [timeRange, record.memo || ""].filter(Boolean).join(" \uFF0F ");
+      metadata.textContent = [timeRange, record.memo || ""].filter(Boolean).join(" ／ ");
       details.append(task);
       if (isResuming) {
         const resumingLabel = document.createElement("small");
         resumingLabel.className = "history-resuming-label";
-        resumingLabel.textContent = "\u8A08\u6E2C\u518D\u958B\u4E2D\uFF08\u5C65\u6B74\u8FFD\u52A0\u6642\u306B\u66F4\u65B0\uFF09";
+        resumingLabel.textContent = "計測再開中（履歴追加時に更新）";
         details.append(resumingLabel);
       }
       if (metadata.textContent) details.append(metadata);
@@ -2929,7 +2929,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     elements.historySummary.replaceChildren();
     elements.historySummary.tabIndex = 0;
     elements.historySummary.setAttribute("role", "button");
-    elements.historySummary.setAttribute("aria-label", "\u3053\u306E\u65E5\u306E\u52E4\u52D9\u96C6\u8A08\u3092\u958B\u304F");
+    elements.historySummary.setAttribute("aria-label", "この日の勤務集計を開く");
     elements.historySummary.onclick = () => openWorkSummaryDialog(elements.historyDate.value);
     elements.historySummary.onkeydown = (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
@@ -2939,11 +2939,11 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const header = document.createElement("div");
     header.className = "history-summary-header";
     const heading = document.createElement("h3");
-    heading.textContent = "\u3053\u306E\u65E5\u306E\u96C6\u8A08";
+    heading.textContent = "この日の集計";
     const workSummaryIndicator = document.createElement("span");
     workSummaryIndicator.className = "work-summary-open-button";
     workSummaryIndicator.setAttribute("aria-hidden", "true");
-    workSummaryIndicator.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 20V10h4v10H4Zm6 0V4h4v16h-4Zm6 0v-7h4v7h-4Z"/></svg><span>\u52E4\u52D9\u96C6\u8A08</span>';
+    workSummaryIndicator.innerHTML = '<svg viewBox="0 0 24 24"><path d="M4 20V10h4v10H4Zm6 0V4h4v16h-4Zm6 0v-7h4v7h-4Z"/></svg><span>勤務集計</span>';
     header.append(heading, workSummaryIndicator);
     elements.historySummary.append(header);
     const totalDurationMs = records.reduce(
@@ -2953,12 +2953,12 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const stats = document.createElement("dl");
     stats.className = "history-summary-stats";
     const count = document.createElement("div");
-    count.innerHTML = "<dt>\u4EF6\u6570</dt>";
+    count.innerHTML = "<dt>件数</dt>";
     const countValue = document.createElement("dd");
-    countValue.textContent = `${records.length}\u4EF6`;
+    countValue.textContent = `${records.length}件`;
     count.append(countValue);
     const total = document.createElement("div");
-    total.innerHTML = "<dt>\u5408\u8A08\u6642\u9593</dt>";
+    total.innerHTML = "<dt>合計時間</dt>";
     const totalValue = document.createElement("dd");
     totalValue.textContent = formatRecordDuration(totalDurationMs);
     total.append(totalValue);
@@ -2969,12 +2969,12 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       const breakDurationMs = Number.isFinite(workday.breakDurationMs) ? Math.max(0, workday.breakDurationMs) : 0;
       const netWorkMs = Math.max(0, grossWorkMs - breakDurationMs);
       const timeRange = document.createElement("div");
-      timeRange.innerHTML = "<dt>\u51FA\u9000\u52E4\u6642\u9593</dt>";
+      timeRange.innerHTML = "<dt>出退勤時間</dt>";
       const timeRangeValue = document.createElement("dd");
-      timeRangeValue.textContent = `${workday.clockIn}\uFF5E${workday.clockOut}`;
+      timeRangeValue.textContent = `${workday.clockIn}～${workday.clockOut}`;
       timeRange.append(timeRangeValue);
       const workDuration = document.createElement("div");
-      workDuration.innerHTML = "<dt>\u52E4\u52D9\u6642\u9593</dt>";
+      workDuration.innerHTML = "<dt>勤務時間</dt>";
       const workDurationValue = document.createElement("dd");
       workDurationValue.textContent = formatRecordDuration(netWorkMs);
       workDuration.append(workDurationValue);
@@ -3030,7 +3030,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     if (elements.taskMemoDialog.open) renderTaskMemoDialog();
     if (notify)
       showToast(
-        normalizedUnit === "clock" ? "\u6642\u9593\u8868\u8A18\u306E\u30C7\u30D5\u30A9\u30EB\u30C8\u3092hh:mm:ss\u306B\u5909\u66F4\u3057\u307E\u3057\u305F" : "\u6642\u9593\u8868\u8A18\u306E\u30C7\u30D5\u30A9\u30EB\u30C8\u3092\u5206\u306B\u5909\u66F4\u3057\u307E\u3057\u305F"
+        normalizedUnit === "clock" ? "時間表記のデフォルトをhh:mm:ssに変更しました" : "時間表記のデフォルトを分に変更しました"
       );
   }
   function isAggregationEnabled() {
@@ -3046,7 +3046,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const unlocked = isPastHistoryEditUnlocked();
     elements.pastHistoryEditInput.checked = unlocked;
     if (!unlocked) {
-      elements.pastHistoryEditStatus.textContent = "OFF\uFF08\u904E\u53BB\u306E\u5C65\u6B74\u306F\u53C2\u7167\u306E\u307F\uFF09";
+      elements.pastHistoryEditStatus.textContent = "OFF（過去の履歴は参照のみ）";
       return;
     }
     const remainingSeconds = Math.max(
@@ -3055,7 +3055,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     );
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = String(remainingSeconds % 60).padStart(2, "0");
-    elements.pastHistoryEditStatus.textContent = "ON\uFF08\u6B8B\u308A " + minutes + ":" + seconds + "\uFF09";
+    elements.pastHistoryEditStatus.textContent = "ON（残り " + minutes + ":" + seconds + "）";
   }
   function disablePastHistoryEditing(notify = false) {
     const selectedDate = elements.historyDate.value;
@@ -3074,7 +3074,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       renderHistory();
     }
     if (elements.workSummaryDialog.open) renderWorkSummary();
-    if (notify) showToast("\u904E\u53BB\u306E\u5C65\u6B74\u7DE8\u96C6\u3092OFF\u306B\u3057\u307E\u3057\u305F");
+    if (notify) showToast("過去の履歴編集をOFFにしました");
   }
   function enablePastHistoryEditing() {
     settingsSession.pastHistoryEditUnlockedUntil = now() + 5 * 60 * 1e3;
@@ -3089,7 +3089,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       renderHistory();
     }
     if (elements.workSummaryDialog.open) renderWorkSummary();
-    showToast("\u904E\u53BB\u306E\u5C65\u6B74\u7DE8\u96C6\u30925\u5206\u9593\u8A31\u53EF\u3057\u307E\u3057\u305F");
+    showToast("過去の履歴編集を5分間許可しました");
   }
   function openSettingsDialog() {
     elements.defaultModeSelect.value = getDefaultMode();
@@ -3138,7 +3138,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     elements.primaryTimeDisplaySelect.value = value;
     render();
     showToast(
-      value === "measurement" ? "\u8A08\u6E2C\u6642\u9593\u3092\u5927\u304D\u304F\u8868\u793A\u3057\u307E\u3059" : "\u73FE\u5728\u6642\u523B\u3092\u5927\u304D\u304F\u8868\u793A\u3057\u307E\u3059"
+      value === "measurement" ? "計測時間を大きく表示します" : "現在時刻を大きく表示します"
     );
   }
   function resolveTheme(theme) {
@@ -3447,8 +3447,8 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       elements.app.ownerDocument.defaultView || window
     );
     const minimizedSize = savedMinimizedSize || automaticMinimizedSize;
-    elements.popupSizeStatus.textContent = savedSize ? `${savedSize.width} \xD7 ${savedSize.height}px\uFF08\u4FDD\u5B58\u6E08\u307F\uFF09` : `${automaticSize.width} \xD7 ${automaticSize.height}px\uFF08\u81EA\u52D5\uFF09`;
-    elements.minimizedPopupSizeStatus.textContent = savedMinimizedSize ? `${minimizedSize.width} \xD7 ${minimizedSize.height}px\uFF08\u4FDD\u5B58\u6E08\u307F\uFF09` : `${minimizedSize.width} \xD7 ${minimizedSize.height}px\uFF08\u81EA\u52D5\uFF09`;
+    elements.popupSizeStatus.textContent = savedSize ? `${savedSize.width} × ${savedSize.height}px（保存済み）` : `${automaticSize.width} × ${automaticSize.height}px（自動）`;
+    elements.minimizedPopupSizeStatus.textContent = savedMinimizedSize ? `${minimizedSize.width} × ${minimizedSize.height}px（保存済み）` : `${minimizedSize.width} × ${minimizedSize.height}px（自動）`;
     elements.resetPopupSizeButton.disabled = !savedSize;
     elements.resetMinimizedPopupSizeButton.disabled = !savedMinimizedSize;
     if (elements.settingsDialog.open && isPastHistoryEditUnlocked())
@@ -3499,7 +3499,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       const view = elements.app.ownerDocument.defaultView;
       applyPopupSize(view, calculateOptimalPopupSize(view));
     }
-    showToast("PiP\u30B5\u30A4\u30BA\u3092\u81EA\u52D5\u8A2D\u5B9A\u306B\u623B\u3057\u307E\u3057\u305F");
+    showToast("PiPサイズを自動設定に戻しました");
   }
   function resetMinimizedPopupSize() {
     storage.removeItem(MINIMIZED_POPUP_SIZE_KEY);
@@ -3515,7 +3515,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
         )
       );
     }
-    showToast("\u6700\u5C0F\u5316\u30B5\u30A4\u30BA\u3092\u81EA\u52D5\u8A2D\u5B9A\u306B\u623B\u3057\u307E\u3057\u305F");
+    showToast("最小化サイズを自動設定に戻しました");
   }
   function openPopupWindow() {
     const url = new URL(window.location.href);
@@ -3526,7 +3526,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       "simpleTimerPopup",
       `popup=yes,width=${size.width},height=${size.height},left=120,top=120,resizable=yes,scrollbars=yes`
     );
-    elements.statusText.textContent = handle ? "\u5C0F\u7A93\u3092\u958B\u304D\u307E\u3057\u305F" : "\u30DD\u30C3\u30D7\u30A2\u30C3\u30D7\u304C\u30D6\u30ED\u30C3\u30AF\u3055\u308C\u307E\u3057\u305F";
+    elements.statusText.textContent = handle ? "小窓を開きました" : "ポップアップがブロックされました";
     if (handle) handle.focus();
   }
   function toggleMinimized() {
@@ -3701,11 +3701,11 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
     const workdays = parse(WORKDAY_TIMES_KEY, {});
     const dates = Array.isArray(records) ? records.map((record) => record && record.date).filter((date) => typeof date === "string").sort() : [];
     return [
-      `\u4F5C\u696D\u5C65\u6B74\uFF1A${Array.isArray(records) ? records.length : 0}\u4EF6`,
-      `\u5BFE\u8C61\u671F\u9593\uFF1A${dates.length ? `${dates[0]} \uFF5E ${dates[dates.length - 1]}` : "\u5C65\u6B74\u306A\u3057"}`,
-      `\u30BF\u30A4\u30DE\u30FC\u30BF\u30D6\uFF1A${Array.isArray(timerState.timerTabs) ? timerState.timerTabs.length : 0}\u4EF6`,
-      `\u65E5\u5225\u30E1\u30E2\uFF1A${memos && typeof memos === "object" && !Array.isArray(memos) ? Object.keys(memos).length : 0}\u4EF6`,
-      `\u51FA\u9000\u52E4\u8A18\u9332\uFF1A${workdays && typeof workdays === "object" && !Array.isArray(workdays) ? Object.keys(workdays).length : 0}\u4EF6`
+      `作業履歴：${Array.isArray(records) ? records.length : 0}件`,
+      `対象期間：${dates.length ? `${dates[0]} ～ ${dates[dates.length - 1]}` : "履歴なし"}`,
+      `タイマータブ：${Array.isArray(timerState.timerTabs) ? timerState.timerTabs.length : 0}件`,
+      `日別メモ：${memos && typeof memos === "object" && !Array.isArray(memos) ? Object.keys(memos).length : 0}件`,
+      `出退勤記録：${workdays && typeof workdays === "object" && !Array.isArray(workdays) ? Object.keys(workdays).length : 0}件`
     ].join("\n");
   }
   function exportBackup() {
@@ -3721,35 +3721,35 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
       )
     };
     if (!window.confirm(
-      `\u6B21\u306E\u5185\u5BB9\u3092\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u3057\u307E\u3059\u3002
+      `次の内容をバックアップします。
 
 ${getBackupSummary(backup.storage)}
 
-\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u3057\u307E\u3059\u304B\uFF1F`
+エクスポートしますか？`
     )) {
-      setBackupStatus("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u3092\u30AD\u30E3\u30F3\u30BB\u30EB\u3057\u307E\u3057\u305F\u3002");
+      setBackupStatus("エクスポートをキャンセルしました。");
       return;
     }
     const blob = new Blob([JSON.stringify(backup, null, 2)], {
       type: "application/json"
     });
     downloadFile(blob, `simple-timer-backup-${localDateKey()}.json`);
-    setBackupStatus("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u30D5\u30A1\u30A4\u30EB\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002");
+    setBackupStatus("バックアップファイルを保存しました。");
   }
   function validateBackup(backup) {
     if (!backup || backup.format !== BACKUP_FORMAT || backup.version !== BACKUP_VERSION) {
       throw new Error(
-        "Simple Timer\u306E\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u30D5\u30A1\u30A4\u30EB\u3067\u306F\u306A\u3044\u304B\u3001\u5BFE\u5FDC\u3057\u3066\u3044\u306A\u3044\u5F62\u5F0F\u3067\u3059\u3002"
+        "Simple Timerのバックアップファイルではないか、対応していない形式です。"
       );
     }
     if (!backup.storage || typeof backup.storage !== "object" || Array.isArray(backup.storage)) {
-      throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u306E\u4FDD\u5B58\u30C7\u30FC\u30BF\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002");
+      throw new Error("バックアップの保存データが見つかりません。");
     }
     BACKUP_STORAGE_KEYS.forEach((key) => {
       if (!(key in backup.storage)) backup.storage[key] = null;
       const value = backup.storage[key];
       if (value !== null && typeof value !== "string") {
-        throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306E\u30C7\u30FC\u30BF\u5F62\u5F0F\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093\u3002");
+        throw new Error("バックアップ内のデータ形式が正しくありません。");
       }
     });
     [
@@ -3782,27 +3782,27 @@ ${getBackupSummary(backup.storage)}
       try {
         parsed = JSON.parse(rawValue);
       } catch {
-        throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306EJSON\u30C7\u30FC\u30BF\u304C\u7834\u640D\u3057\u3066\u3044\u307E\u3059\u3002");
+        throw new Error("バックアップ内のJSONデータが破損しています。");
       }
       if (!isValid(parsed))
-        throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306E\u30C7\u30FC\u30BF\u5F62\u5F0F\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093\u3002");
+        throw new Error("バックアップ内のデータ形式が正しくありません。");
     });
     if (backup.storage[DEFAULT_MODE_KEY] !== null && !Object.values(MODES).includes(backup.storage[DEFAULT_MODE_KEY])) {
-      throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306E\u521D\u671F\u8868\u793A\u8A2D\u5B9A\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093\u3002");
+      throw new Error("バックアップ内の初期表示設定が正しくありません。");
     }
     if (backup.storage[AGGREGATION_ENABLED_KEY] !== null && !["true", "false"].includes(backup.storage[AGGREGATION_ENABLED_KEY])) {
-      throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306E\u9AD8\u5EA6\u306A\u8A08\u6E2C\u8A2D\u5B9A\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093\u3002");
+      throw new Error("バックアップ内の高度な計測設定が正しくありません。");
     }
     if (backup.storage[THEME_KEY] !== null && !["system", "light", "dark"].includes(backup.storage[THEME_KEY])) {
-      throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306E\u30C6\u30FC\u30DE\u8A2D\u5B9A\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093\u3002");
+      throw new Error("バックアップ内のテーマ設定が正しくありません。");
     }
     if (backup.storage[PRIMARY_TIME_DISPLAY_KEY] !== null && !["measurement", "clock"].includes(backup.storage[PRIMARY_TIME_DISPLAY_KEY])) {
-      throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306E\u6642\u9593\u8868\u793A\u8A2D\u5B9A\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093\u3002");
+      throw new Error("バックアップ内の時間表示設定が正しくありません。");
     }
     if (backup.storage[FINISH_SOUND_VOLUME_KEY] !== null) {
       const volume = Number(backup.storage[FINISH_SOUND_VOLUME_KEY]);
       if (!Number.isSafeInteger(volume) || volume < 0) {
-        throw new Error("\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u5185\u306E\u7D42\u4E86\u97F3\u91CF\u8A2D\u5B9A\u304C\u6B63\u3057\u304F\u3042\u308A\u307E\u305B\u3093\u3002");
+        throw new Error("バックアップ内の終了音量設定が正しくありません。");
       }
     }
   }
@@ -3924,12 +3924,12 @@ ${getBackupSummary(backup.storage)}
         finishBackupImport("replace");
         return;
       }
-      elements.backupImportSummary.textContent = `\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u306E\u5185\u5BB9
+      elements.backupImportSummary.textContent = `バックアップの内容
 ${getBackupSummary(backup.storage)}`;
       elements.backupImportModeDialog.showModal();
     } catch (error) {
       setBackupStatus(
-        error instanceof Error ? error.message : "\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u3092\u8AAD\u307F\u8FBC\u3081\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
+        error instanceof Error ? error.message : "バックアップを読み込めませんでした。",
         true
       );
     }
@@ -3944,7 +3944,7 @@ ${getBackupSummary(backup.storage)}`;
     elements.cancelBackupImportButton.addEventListener("click", () => {
       backupSession.pendingBackupImport = null;
       elements.backupImportModeDialog.close();
-      setBackupStatus("\u30A4\u30F3\u30DD\u30FC\u30C8\u3092\u30AD\u30E3\u30F3\u30BB\u30EB\u3057\u307E\u3057\u305F\u3002");
+      setBackupStatus("インポートをキャンセルしました。");
     });
     elements.mergeBackupImportButton.addEventListener(
       "click",
@@ -3956,7 +3956,7 @@ ${getBackupSummary(backup.storage)}`;
     );
     elements.backupImportModeDialog.addEventListener("cancel", () => {
       backupSession.pendingBackupImport = null;
-      setBackupStatus("\u30A4\u30F3\u30DD\u30FC\u30C8\u3092\u30AD\u30E3\u30F3\u30BB\u30EB\u3057\u307E\u3057\u305F\u3002");
+      setBackupStatus("インポートをキャンセルしました。");
     });
   }
 
@@ -3980,12 +3980,12 @@ ${getBackupSummary(backup.storage)}`;
     const includeDuration = elements.exportDurationInput.checked;
     const includeMemo = elements.exportMemoInput.checked;
     if (!includeTimeRange && !includeDuration) {
-      elements.exportHistoryError.textContent = "\u958B\u59CB\u30FB\u7D42\u4E86\u6642\u9593\u307E\u305F\u306F\u4F5C\u696D\u6642\u9593\u30921\u3064\u4EE5\u4E0A\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044";
+      elements.exportHistoryError.textContent = "開始・終了時間または作業時間を1つ以上選択してください";
       return;
     }
     const hasExportableMemo = includeMemo && Object.values(historySession.dailyMemos).some((memo) => memo.trim());
     if (!state.records.length && !hasExportableMemo) {
-      elements.exportHistoryError.textContent = "\u51FA\u529B\u3067\u304D\u308B\u5C65\u6B74\u307E\u305F\u306F\u65E5\u5225\u30E1\u30E2\u304C\u3042\u308A\u307E\u305B\u3093";
+      elements.exportHistoryError.textContent = "出力できる履歴または日別メモがありません";
       return;
     }
     const durationFormat = new FormData(elements.exportHistoryForm).get(
@@ -4006,32 +4006,32 @@ ${getBackupSummary(backup.storage)}`;
         ) : []
       ])
     ].sort();
-    const lines = ["Simple Timer \u4F5C\u696D\u5C65\u6B74", ""];
+    const lines = ["Simple Timer 作業履歴", ""];
     dates.forEach((date) => {
       lines.push(date);
       if (includeMemo && historySession.dailyMemos[date]) {
         lines.push(
-          `\u65E5\u5225\u30E1\u30E2: ${historySession.dailyMemos[date].replace(/\n/g, "\n  ")}`
+          `日別メモ: ${historySession.dailyMemos[date].replace(/\n/g, "\n  ")}`
         );
       }
       const records = recordsByDate.get(date) || [];
       if (records.length) {
-        const headings = ["\u4F5C\u696D\u540D"];
-        if (includeTimeRange) headings.push("\u958B\u59CB\uFF5E\u7D42\u4E86");
-        if (includeDuration) headings.push("\u4F5C\u696D\u6642\u9593");
+        const headings = ["作業名"];
+        if (includeTimeRange) headings.push("開始～終了");
+        if (includeDuration) headings.push("作業時間");
         lines.push(headings.join("	"));
         records.forEach((record) => {
           const columns = [record.taskName];
           if (includeTimeRange)
-            columns.push(formatHistoryTimeRange(record) || "\uFF5E");
+            columns.push(formatHistoryTimeRange(record) || "～");
           if (includeDuration) {
             columns.push(
-              durationFormat === "clock" ? formatTime(record.durationMs) : `${Math.round(record.durationMs / 6e4)}\u5206`
+              durationFormat === "clock" ? formatTime(record.durationMs) : `${Math.round(record.durationMs / 6e4)}分`
             );
           }
           lines.push(columns.join("	"));
           if (includeMemo && record.memo)
-            lines.push(`  \u30E1\u30E2: ${record.memo.replace(/\n/g, "\n    ")}`);
+            lines.push(`  メモ: ${record.memo.replace(/\n/g, "\n    ")}`);
         });
       }
       lines.push("");
@@ -4041,8 +4041,8 @@ ${getBackupSummary(backup.storage)}`;
     });
     downloadFile(blob, `simple-timer-history-${localDateKey()}.txt`);
     elements.exportHistoryDialog.close();
-    elements.statusText.textContent = "\u5168\u5C65\u6B74\u3092TXT\u51FA\u529B\u3057\u307E\u3057\u305F";
-    showToast("\u9078\u629E\u3057\u305F\u5185\u5BB9\u3067\u5C65\u6B74\u3092\u51FA\u529B\u3057\u307E\u3057\u305F");
+    elements.statusText.textContent = "全履歴をTXT出力しました";
+    showToast("選択した内容で履歴を出力しました");
   }
   function bindExportEvents() {
     elements.exportHistoryButton.addEventListener(
@@ -4080,7 +4080,7 @@ ${getBackupSummary(backup.storage)}`;
         saveState();
         render();
       }
-      showToast("\u65B0\u3057\u3044\u30BF\u30A4\u30DE\u30FC\u306E\u521D\u671F\u30E2\u30FC\u30C9\u3092\u5909\u66F4\u3057\u307E\u3057\u305F");
+      showToast("新しいタイマーの初期モードを変更しました");
     });
     elements.aggregationEnabledInput.addEventListener("change", () => {
       storage.setItem(
@@ -4089,7 +4089,7 @@ ${getBackupSummary(backup.storage)}`;
       );
       if (elements.historyDialog.open) renderHistory();
       showToast(
-        elements.aggregationEnabledInput.checked ? "\u9AD8\u5EA6\u306A\u8A08\u6E2C\u3092\u6709\u52B9\u306B\u3057\u307E\u3057\u305F" : "\u9AD8\u5EA6\u306A\u8A08\u6E2C\u3092\u7121\u52B9\u306B\u3057\u307E\u3057\u305F"
+        elements.aggregationEnabledInput.checked ? "高度な計測を有効にしました" : "高度な計測を無効にしました"
       );
     });
     elements.pastHistoryEditInput.addEventListener("change", () => {
@@ -4102,7 +4102,7 @@ ${getBackupSummary(backup.storage)}`;
       if (theme === "system") storage.removeItem(THEME_KEY);
       else storage.setItem(THEME_KEY, theme);
       applyTheme(theme);
-      showToast("\u8868\u793A\u30C6\u30FC\u30DE\u3092\u5909\u66F4\u3057\u307E\u3057\u305F");
+      showToast("表示テーマを変更しました");
     });
     elements.primaryTimeDisplaySelect.addEventListener("change", () => {
       const value = elements.primaryTimeDisplaySelect.value;
@@ -4110,7 +4110,7 @@ ${getBackupSummary(backup.storage)}`;
       storage.setItem(PRIMARY_TIME_DISPLAY_KEY, value);
       render();
       showToast(
-        value === "measurement" ? "\u8A08\u6E2C\u6642\u9593\u3092\u5927\u304D\u304F\u8868\u793A\u3057\u307E\u3059" : "\u73FE\u5728\u6642\u523B\u3092\u5927\u304D\u304F\u8868\u793A\u3057\u307E\u3059"
+        value === "measurement" ? "計測時間を大きく表示します" : "現在時刻を大きく表示します"
       );
     });
     elements.defaultTimeFormatSelect.addEventListener("change", () => {
@@ -4135,7 +4135,7 @@ ${getBackupSummary(backup.storage)}`;
     });
     elements.previewFinishSoundButton.addEventListener("click", () => {
       if (getFinishSoundVolume() <= 0) {
-        showToast("\u7D42\u4E86\u97F3\u306E\u97F3\u91CF\u306F0%\u3067\u3059");
+        showToast("終了音の音量は0%です");
         return;
       }
       playFinishSound();
@@ -4162,7 +4162,7 @@ ${getBackupSummary(backup.storage)}`;
     if (!todos.length) {
       const empty = list.ownerDocument.createElement("p");
       empty.className = "empty-message";
-      empty.textContent = "Todo\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093";
+      empty.textContent = "Todoはまだありません";
       list.append(empty);
     }
     for (const todo of todos) {
@@ -4176,13 +4176,13 @@ ${getBackupSummary(backup.storage)}`;
       text.textContent = todo.text;
       const deadline = list.ownerDocument.createElement("small");
       deadline.className = "history-item-meta";
-      deadline.textContent = `\u671F\u9650\uFF1A${todo.due || "\u672A\u6307\u5B9A"}`;
+      deadline.textContent = `期限：${todo.due || "未指定"}`;
       details.append(text, deadline);
       const button = list.ownerDocument.createElement("button");
       button.type = "button";
       button.className = "secondary-button";
-      button.textContent = "\u524A\u9664";
-      button.setAttribute("aria-label", `${todo.text}\u3092\u524A\u9664`);
+      button.textContent = "削除";
+      button.setAttribute("aria-label", `${todo.text}を削除`);
       button.addEventListener("click", () => {
         const latest = JSON.parse(storage.getItem(TODOS_KEY));
         storage.setItem(
@@ -4240,7 +4240,7 @@ ${getBackupSummary(backup.storage)}`;
     const currentSecond = Math.floor(date.getTime() / 1e3);
     if (currentSecond === timerSession.displayedClockSecond) return;
     timerSession.displayedClockSecond = currentSecond;
-    const weekdays = ["\u65E5", "\u6708", "\u706B", "\u6C34", "\u6728", "\u91D1", "\u571F"];
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
     const dateText = [
       date.getFullYear(),
       String(date.getMonth() + 1).padStart(2, "0"),
@@ -4266,7 +4266,7 @@ ${getBackupSummary(backup.storage)}`;
     syncInputsFromDuration();
     saveState();
     render();
-    if (notify) showToast("\u524D\u65E5\u5206\u306E\u8A08\u6E2C\u9014\u4E2D\u30C7\u30FC\u30BF\u3092\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F");
+    if (notify) showToast("前日分の計測途中データをリセットしました");
   }
   function startDateTimeUpdates() {
     if (timerSession.dateTimeIntervalId || timerSession.pendingNewDateKey) return;
@@ -4303,7 +4303,7 @@ ${getBackupSummary(backup.storage)}`;
       (total, tab) => total + Math.max(0, tab.elapsedBeforeStartMs),
       0
     );
-    elements.previousDayConfirmMessage.textContent = `${formatHistoryDateLabel(timerSession.activeStateDate)}\u306E\u4F5C\u696D\u6642\u9593 ${formatTime(totalMs)} \u304C\u6B8B\u3063\u3066\u3044\u307E\u3059\u3002`;
+    elements.previousDayConfirmMessage.textContent = `${formatHistoryDateLabel(timerSession.activeStateDate)}の作業時間 ${formatTime(totalMs)} が残っています。`;
     elements.previousDayConfirmOverlay.hidden = false;
     elements.recordPreviousDayButton.focus();
   }
@@ -4317,7 +4317,7 @@ ${getBackupSummary(backup.storage)}`;
     showToast(message);
   }
   function resetPreviousDayWork() {
-    finishPreviousDayResolution("\u524D\u65E5\u5206\u306E\u4F5C\u696D\u6642\u9593\u3092\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F");
+    finishPreviousDayResolution("前日分の作業時間をリセットしました");
   }
   function recordPreviousDayWork() {
     const [year, month, day] = timerSession.activeStateDate.split("-").map(Number);
@@ -4328,7 +4328,7 @@ ${getBackupSummary(backup.storage)}`;
       state.records.push({
         id: `${now()}-${Math.random().toString(16).slice(2)}`,
         date: timerSession.activeStateDate,
-        taskName: normalizeTaskName(tab.taskName) || `\u30BF\u30A4\u30DE\u30FC ${tab.number}`,
+        taskName: normalizeTaskName(tab.taskName) || `タイマー ${tab.number}`,
         memo: typeof tab.taskMemo === "string" ? tab.taskMemo : "",
         durationMs: Math.round(tab.elapsedBeforeStartMs),
         mode: tab.mode,
@@ -4337,7 +4337,7 @@ ${getBackupSummary(backup.storage)}`;
       });
     });
     saveRecords();
-    finishPreviousDayResolution("\u524D\u65E5\u5206\u3092\u4F5C\u696D\u5C65\u6B74\u306B\u8FFD\u52A0\u3057\u307E\u3057\u305F");
+    finishPreviousDayResolution("前日分を作業履歴に追加しました");
   }
 
   // src/features/timer/events.js
@@ -4489,14 +4489,14 @@ ${getBackupSummary(backup.storage)}`;
     }
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       navigator.serviceWorker.register("./service-worker.js").catch(() => {
-        showToast("\u30AA\u30D5\u30E9\u30A4\u30F3\u6A5F\u80FD\u3092\u6E96\u5099\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F");
+        showToast("オフライン機能を準備できませんでした");
       });
     }
     window.addEventListener(
       "offline",
-      () => showToast("\u30AA\u30D5\u30E9\u30A4\u30F3\u306B\u306A\u308A\u307E\u3057\u305F\u3002\u4FDD\u5B58\u6E08\u307F\u306E\u6A5F\u80FD\u3092\u5229\u7528\u3067\u304D\u307E\u3059")
+      () => showToast("オフラインになりました。保存済みの機能を利用できます")
     );
-    window.addEventListener("online", () => showToast("\u30AA\u30F3\u30E9\u30A4\u30F3\u306B\u623B\u308A\u307E\u3057\u305F"));
+    window.addEventListener("online", () => showToast("オンラインに戻りました"));
     window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
       if (getTheme() === "system") applyTheme("system");
     });

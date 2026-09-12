@@ -152,10 +152,8 @@ export function requestTimerNavigation(action) {
     ? state.timerTabs.find((tab) => tab.id === action.runningTimerId)
     : null;
   elements.timerNavigationConfirmMessage.textContent = isStart
-    ? `バックグラウンドで動作中の「${timerTabLabel(runningTab)}」を一時停止して、このタイマーを開始しますか？`
-    : isSelect
-      ? "別のタイマータブへ移動します。計測中のタイマーはバックグラウンドで継続します。"
-      : "新しいタイマータブを作成します。計測中のタイマーはバックグラウンドで継続します。";
+    ? `バックグラウンドで計測中の「${timerTabLabel(runningTab)}」を一時停止して、このタイマーを開始しますか？`
+    : "";
   elements.confirmTimerNavigationButton.textContent = isStart
     ? "一時停止して開始"
     : isSelect
@@ -251,7 +249,7 @@ export function removeTimerTab(timerId) {
     timerSession.timerTabsSignature = "";
     saveState();
     render();
-    showToast("タイマータブを元に戻しました");
+    showToast("タイマータブを元に戻しました。");
   });
 }
 
@@ -285,7 +283,7 @@ export function closeTimerTab(timerId) {
   timerSession.pendingCloseTimerId = timerId;
   timerSession.timerTabConfirmPreviousFocus =
     elements.app.ownerDocument.activeElement;
-  elements.timerTabConfirmMessage.textContent = `「${timerTabLabel(tab)}」は開始済みです。計測内容を破棄して削除してもよろしいですか？`;
+  elements.timerTabConfirmMessage.textContent = `「${timerTabLabel(tab)}」は開始ずみです。計測内容を破棄して削除してもよろしいですか？`;
   elements.timerTabConfirmOverlay.hidden = false;
   elements.confirmTimerTabDeleteButton.focus();
 }
