@@ -425,6 +425,8 @@ export async function openDocumentPictureInPicture() {
       pipWindow.requestAnimationFrame(applyPreferredSize),
     );
     pipWindow.addEventListener("pagehide", () => {
+      // Close before adopting the dialog back into the main document.
+      if (elements.todoDialog.open) elements.todoDialog.close();
       state.isMinimized = false;
       popupSession.preMinimizePopupSize = null;
       elements.app.style.zoom = "";

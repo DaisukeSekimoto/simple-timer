@@ -23,11 +23,8 @@ import { showToast } from "../../ui/toast.js";
 
 export function updateDateTime(date = new Date()) {
   const dateKey = localDateKey(date);
-  const todoList = document.querySelector("#todo-list");
-  if (
-    document.querySelector("#todo-dialog").open &&
-    todoList.dataset.date !== dateKey
-  )
+  const todoList = elements.todoList;
+  if (elements.todoDialog.open && todoList.dataset.date !== dateKey)
     renderTodos();
   if (
     dateKey !== timerSession.activeStateDate &&

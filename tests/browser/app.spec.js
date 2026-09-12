@@ -207,3 +207,47 @@ test("popup uses the bundled stylesheet and can register a Todo", async ({
   await addTodo(popup, "小窓から追加");
   await expect(popup.locator("#todo-list")).toContainText("小窓から追加");
 });
+
+test("Document PiP keeps Todo inside its window and hides the button when minimized", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openApp(page);
+  const popupPromise = page.waitForEvent("popup");
+  await page.locator("#popup-button").click();
+  const pip = await popupPromise;
+  pip.on("pageerror", (error) => errors.push(error.message));
+  // This must exercise Document PiP, not the separate-window fallback.
+  expect(
+    await page.evaluate(() => Boolean(window.documentPictureInPicture?.window)),
+  ).toBe(true);
+  await expect(page.locator("#todo-dialog")).toHaveCount(0);
+  await expect(pip.locator("#todo-button")).toBeVisible();
+  await pip.locator("#todo-button").click();
+  await expect(pip.locator("#todo-dialog")).toBeVisible();
+  await addTodo(pip, "PiPで登録", "2026-09-12");
+  await expect(pip.locator("#todo-list")).toContainText("PiPで登録");
+  // Let the main window's date timer run while the DOM lives in PiP.
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector(".app")))
+    .toBeNull();
+  await pip
+    .getByRole("button", { name: "PiPで登録を削除", exact: true })
+    .click();
+  await expect(pip.locator(".todo-item")).toHaveCount(0);
+  await addTodo(pip, "PiPを閉じても保持");
+  await pip.locator("#close-todo-button").click();
+  await pip.locator("#minimize-button").click();
+  await expect(pip.locator("body")).toHaveClass(/is-minimized/);
+  await expect(pip.locator("#todo-button")).toBeHidden();
+  await pip.locator("#minimize-button").click();
+  await expect(pip.locator("#todo-button")).toBeVisible();
+  await pip.locator("#todo-button").click();
+  await pip.close();
+  await expect(page.locator("#todo-button")).toBeVisible();
+  await page.locator("#todo-button").click();
+  await expect(page.locator("#todo-dialog")).toBeVisible();
+  await expect(page.locator("#todo-list")).toContainText("PiPを閉じても保持");
+  expect(errors).toEqual([]);
+});

@@ -64,6 +64,7 @@
 .is-popup.is-minimized .timer-form,
 .is-popup.is-minimized .control-row,
 .is-popup.is-minimized #history-button,
+.is-popup.is-minimized #todo-button,
 .is-popup.is-minimized #settings-button {
   display: none;
 }

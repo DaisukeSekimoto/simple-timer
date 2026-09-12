@@ -1,4 +1,11 @@
 export const elements = {
+  todoButton: document.querySelector("#todo-button"),
+  todoDialog: document.querySelector("#todo-dialog"),
+  todoCloseButton: document.querySelector("#close-todo-button"),
+  todoForm: document.querySelector("#todo-form"),
+  todoText: document.querySelector("#todo-text"),
+  todoDue: document.querySelector("#todo-due"),
+  todoList: document.querySelector("#todo-list"),
   body: document.body,
   app: document.querySelector(".app"),
   appTitle: document.querySelector("#app-title"),

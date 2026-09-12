@@ -189,6 +189,13 @@
 
   // src/ui/elements.js
   var elements = {
+    todoButton: document.querySelector("#todo-button"),
+    todoDialog: document.querySelector("#todo-dialog"),
+    todoCloseButton: document.querySelector("#close-todo-button"),
+    todoForm: document.querySelector("#todo-form"),
+    todoText: document.querySelector("#todo-text"),
+    todoDue: document.querySelector("#todo-due"),
+    todoList: document.querySelector("#todo-list"),
     body: document.body,
     app: document.querySelector(".app"),
     appTitle: document.querySelector("#app-title"),
@@ -3599,6 +3606,7 @@ OK\uFF1A\u65E2\u5B58\u540D\u306B\u7D71\u4E00 \uFF0F \u30AD\u30E3\u30F3\u30BB\u30
         () => pipWindow.requestAnimationFrame(applyPreferredSize)
       );
       pipWindow.addEventListener("pagehide", () => {
+        if (elements.todoDialog.open) elements.todoDialog.close();
         state.isMinimized = false;
         popupSession.preMinimizePopupSize = null;
         elements.app.style.zoom = "";
@@ -4145,32 +4153,32 @@ ${getBackupSummary(backup.storage)}`;
 
   // src/features/todos/todos.js
   function renderTodos() {
-    const list = document.querySelector("#todo-list");
+    const list = elements.todoList;
     list.replaceChildren();
     const today = localDateKey();
     list.dataset.date = today;
     const todos = JSON.parse(storage.getItem(TODOS_KEY) || "[]");
     todos.sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
     if (!todos.length) {
-      const empty = document.createElement("p");
+      const empty = list.ownerDocument.createElement("p");
       empty.className = "empty-message";
       empty.textContent = "Todo\u306F\u307E\u3060\u3042\u308A\u307E\u305B\u3093";
       list.append(empty);
     }
     for (const todo of todos) {
-      const row = document.createElement("div");
+      const row = list.ownerDocument.createElement("div");
       row.className = "history-item todo-item";
       row.classList.toggle("is-due-today", todo.due === today);
       row.classList.toggle("is-overdue", Boolean(todo.due) && todo.due < today);
-      const details = document.createElement("div");
+      const details = list.ownerDocument.createElement("div");
       details.className = "history-item-details";
-      const text = document.createElement("strong");
+      const text = list.ownerDocument.createElement("strong");
       text.textContent = todo.text;
-      const deadline = document.createElement("small");
+      const deadline = list.ownerDocument.createElement("small");
       deadline.className = "history-item-meta";
       deadline.textContent = `\u671F\u9650\uFF1A${todo.due || "\u672A\u6307\u5B9A"}`;
       details.append(text, deadline);
-      const button = document.createElement("button");
+      const button = list.ownerDocument.createElement("button");
       button.type = "button";
       button.className = "secondary-button";
       button.textContent = "\u524A\u9664";
@@ -4188,15 +4196,15 @@ ${getBackupSummary(backup.storage)}`;
     }
   }
   function initializeTodos() {
-    const dialog = document.querySelector("#todo-dialog");
-    document.querySelector("#todo-button").addEventListener("click", () => {
+    const dialog = elements.todoDialog;
+    elements.todoButton.addEventListener("click", () => {
       renderTodos();
       dialog.showModal();
     });
-    document.querySelector("#close-todo-button").addEventListener("click", () => dialog.close());
-    document.querySelector("#todo-form").addEventListener("submit", (event) => {
+    elements.todoCloseButton.addEventListener("click", () => dialog.close());
+    elements.todoForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const input = document.querySelector("#todo-text");
+      const input = elements.todoText;
       const text = input.value.trim();
       if (!text) {
         input.focus();
@@ -4206,7 +4214,7 @@ ${getBackupSummary(backup.storage)}`;
       todos.push({
         id: crypto.randomUUID(),
         text,
-        due: document.querySelector("#todo-due").value
+        due: elements.todoDue.value
       });
       storage.setItem(TODOS_KEY, JSON.stringify(todos));
       event.target.reset();
@@ -4218,8 +4226,8 @@ ${getBackupSummary(backup.storage)}`;
   // src/features/timer/day.js
   function updateDateTime(date = /* @__PURE__ */ new Date()) {
     const dateKey = localDateKey(date);
-    const todoList = document.querySelector("#todo-list");
-    if (document.querySelector("#todo-dialog").open && todoList.dataset.date !== dateKey)
+    const todoList = elements.todoList;
+    if (elements.todoDialog.open && todoList.dataset.date !== dateKey)
       renderTodos();
     if (dateKey !== timerSession.activeStateDate && state.timerTabs.length && !timerSession.pendingNewDateKey) {
       const hasPreviousDayWork = state.timerTabs.some((tab) => {
