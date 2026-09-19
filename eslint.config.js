@@ -1,7 +1,7 @@
 import js from "@eslint/js";
 import globals from "globals";
 export default [
-  { ignores: ["assets/**", "service-worker.js"] },
+  { ignores: ["service-worker.js"] },
   js.configs.recommended,
   {
     languageOptions: {

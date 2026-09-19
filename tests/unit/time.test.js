@@ -7,7 +7,7 @@ import {
   formatDurationForUnit,
   formatTime,
   localDateKey,
-} from "../../src/shared/time.js";
+} from "../../assets/shared/time.js";
 
 test("history records are ordered by latest edited end time first", () => {
   const records = [

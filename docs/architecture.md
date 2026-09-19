@@ -2,14 +2,14 @@
 
 ## 全体像
 
-画面は引き続き静的なWebアプリです。開発時のJavaScriptはES Modules、CSSは機能別ファイルで管理します。`npm run build` で、ブラウザが読む `assets/app.js` と `assets/styles.css` にまとめます。実行時のパッケージ依存・APIサーバー・外部CDNはありません。
+画面は引き続き静的なWebアプリです。JavaScriptは`assets/`内のES Modulesをブラウザが直接読み込み、CSSは機能別ファイルで管理します。`npm run build`ではCSSを`assets/styles.css`へまとめ、Service Workerのキャッシュ一覧と更新番号を生成します。実行時のパッケージ依存・APIサーバー・外部CDNはありません。
 
-`assets/` とルートの `service-worker.js` は生成物です。変更するのは `src/`、`index.html`、`scripts/service-worker.template.js` です。生成物を手で直すと次のビルドで上書きされます。
+JavaScriptと分割CSSは`assets/`内を直接編集します。`assets/styles.css`とルートの`service-worker.js`は生成物であり、手で直すと次のビルドで上書きされます。
 
 ```text
 simple-timer/
 ├── index.html                  # 画面のHTML、ダイアログ、CSP
-├── src/
+├── assets/
 │   ├── main.js                 # 起動手順
 │   ├── core/                   # 共通定数、計測データ、イベント登録の入口
 │   ├── storage/                # ブラウザ保存と既存データの読み込み
@@ -23,9 +23,9 @@ simple-timer/
 │   │   ├── settings/           # 設定・テーマ・編集許可
 │   │   ├── backup/             # JSON出力、検証、結合・置換
 │   │   └── popup/              # 小窓・最小化・Picture-in-Picture
-│   └── styles/                 # 機能別CSS。index.cssが適用順を定義
-├── assets/                     # ビルド済みのJavaScript・CSS（配信用）
-├── service-worker.js            # 内容から更新番号を生成するオフライン用ファイル
+│   ├── styles/                 # 機能別CSS。index.cssが適用順を定義
+│   └── styles.css              # ビルドで生成する結合済みCSS
+├── service-worker.js           # 内容から更新番号を生成するオフライン用ファイル
 ├── scripts/                    # ビルドとService Workerの原本
 ├── tests/
 │   ├── unit/                   # 保存・日時・計測の回帰テスト
@@ -37,27 +37,27 @@ simple-timer/
 
 ## 共通部分
 
-| ファイル                            | 役割                                                                                                                           |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `src/main.js`                       | 保存データを読み込み、入力欄・イベント・描画・オフライン機能を初期化する。別タブからの保存変更を受け取って共有画面を更新する。 |
-| `src/core/constants.js`             | 保存キー、バックアップ形式、計測モード、初期時間、画面サイズの制約。保存キーはここを基準にする。                               |
-| `src/core/state.js`                 | 現在のタイマー、アプリ内タイマータブ、作業履歴、時間表示単位。                                                                 |
-| `src/core/events.js`                | 各機能のイベント登録を一度ずつ呼ぶ。個別のクリック処理は各機能へ置く。                                                         |
-| `src/core/lifecycle.js`             | リサイズとページ終了時の保存・確認。                                                                                           |
-| `src/storage/client.js`             | ブラウザのlocalStorageとsessionStorageを保存アダプターに渡す。各機能には `storage` として公開する。                            |
-| `src/storage/shared-storage.js`     | 項目別の差分保存、削除を示す値、タブ別のタイマー状態。DOMに依存せず単体テストできる。                                          |
-| `src/storage/repository.js`         | タイマー・履歴・日別メモ・勤務時間の読み込み、正規化、保存。旧形式のタイマーもここで引き継ぐ。                                 |
-| `src/shared/time.js`                | 日付キー、時間の表記、入力値の正規化、日をまたぐ時間差。DOMやアプリ状態を参照しない共通計算。                                  |
-| `src/shared/download.js`            | Blobのダウンロードと一時URLの後始末。TXT出力とJSONバックアップで共用。                                                         |
-| `src/ui/elements.js`                | 既存画面のDOM参照を一か所で定義する。Todoも含めて参照を保持し、PiPへのDOM移動後も同じ要素を操作する。                          |
-| `src/ui/activation.js`              | クリックとEnter/Spaceによる同じ操作の登録。                                                                                    |
-| `src/ui/events.js`                  | 共通の閉じるボタン、Undo、キーボードイベントの登録。                                                                           |
-| `src/ui/keyboard.js`                | ショートカットとモーダル表示中の操作優先順位。                                                                                 |
-| `src/ui/toast.js`・`toast-state.js` | 一時通知と取り消し操作、その表示中の状態。                                                                                     |
+| ファイル                               | 役割                                                                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `assets/main.js`                       | 保存データを読み込み、入力欄・イベント・描画・オフライン機能を初期化する。別タブからの保存変更を受け取って共有画面を更新する。 |
+| `assets/core/constants.js`             | 保存キー、バックアップ形式、計測モード、初期時間、画面サイズの制約。保存キーはここを基準にする。                               |
+| `assets/core/state.js`                 | 現在のタイマー、アプリ内タイマータブ、作業履歴、時間表示単位。                                                                 |
+| `assets/core/events.js`                | 各機能のイベント登録を一度ずつ呼ぶ。個別のクリック処理は各機能へ置く。                                                         |
+| `assets/core/lifecycle.js`             | リサイズとページ終了時の保存・確認。                                                                                           |
+| `assets/storage/client.js`             | ブラウザのlocalStorageとsessionStorageを保存アダプターに渡す。各機能には `storage` として公開する。                            |
+| `assets/storage/shared-storage.js`     | 項目別の差分保存、削除を示す値、タブ別のタイマー状態。DOMに依存せず単体テストできる。                                          |
+| `assets/storage/repository.js`         | タイマー・履歴・日別メモ・勤務時間の読み込み、正規化、保存。旧形式のタイマーもここで引き継ぐ。                                 |
+| `assets/shared/time.js`                | 日付キー、時間の表記、入力値の正規化、日をまたぐ時間差。DOMやアプリ状態を参照しない共通計算。                                  |
+| `assets/shared/download.js`            | Blobのダウンロードと一時URLの後始末。TXT出力とJSONバックアップで共用。                                                         |
+| `assets/ui/elements.js`                | 既存画面のDOM参照を一か所で定義する。Todoも含めて参照を保持し、PiPへのDOM移動後も同じ要素を操作する。                          |
+| `assets/ui/activation.js`              | クリックとEnter/Spaceによる同じ操作の登録。                                                                                    |
+| `assets/ui/events.js`                  | 共通の閉じるボタン、Undo、キーボードイベントの登録。                                                                           |
+| `assets/ui/keyboard.js`                | ショートカットとモーダル表示中の操作優先順位。                                                                                 |
+| `assets/ui/toast.js`・`toast-state.js` | 一時通知と取り消し操作、その表示中の状態。                                                                                     |
 
 ## 機能別の役割
 
-### タイマー：`src/features/timer/`
+### タイマー：`assets/features/timer/`
 
 | ファイル                     | 役割                                                                             |
 | ---------------------------- | -------------------------------------------------------------------------------- |
@@ -73,7 +73,7 @@ simple-timer/
 | `events.js`                  | タイマーボタン、タブ操作、確認画面のイベント登録。                               |
 | `state.js`                   | 計測周期ID、確認待ちの操作、日付、表示キャッシュなどの一時状態。                 |
 
-### 履歴：`src/features/history/`
+### 履歴：`assets/features/history/`
 
 | ファイル       | 役割                                                                       |
 | -------------- | -------------------------------------------------------------------------- |
@@ -119,7 +119,7 @@ simple-timer/
 
 ## CSSの構成
 
-`src/styles/index.css` が適用順の一覧です。既存の表示を維持するため、分割前のカスケード順を保っています。
+`assets/styles/index.css` が適用順の一覧です。既存の表示を維持するため、分割前のカスケード順を保っています。
 
 | ファイル                                                    | 主な対象                                         |
 | ----------------------------------------------------------- | ------------------------------------------------ |

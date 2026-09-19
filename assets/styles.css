@@ -1,4 +1,4 @@
-/* src/styles/base.css */
+/* assets/styles/base.css */
 :root {
   --bg: #f5f7f8;
   --panel: #ffffff;
@@ -248,7 +248,7 @@ h1 {
   white-space: nowrap;
 }
 
-/* src/styles/timer.css */
+/* assets/styles/timer.css */
 .timer-workspace-tabs {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 38px;
@@ -753,7 +753,7 @@ h1 {
   white-space: nowrap;
 }
 
-/* src/styles/dialogs.css */
+/* assets/styles/dialogs.css */
 .modal {
   width: min(calc(100% - 24px), 410px);
   max-height: calc(100vh - 32px);
@@ -841,7 +841,7 @@ h1 {
   min-height: 42px;
 }
 
-/* src/styles/settings.css */
+/* assets/styles/settings.css */
 .settings-card {
   gap: 16px;
 }
@@ -1024,7 +1024,7 @@ kbd {
   text-align: center;
 }
 
-/* src/styles/tasks.css */
+/* assets/styles/tasks.css */
 .recent-task-list {
   display: flex;
   flex-wrap: wrap;
@@ -1048,7 +1048,7 @@ kbd {
   text-align: center;
 }
 
-/* src/styles/history/list.css */
+/* assets/styles/history/list.css */
 .history-filters {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1109,7 +1109,7 @@ kbd {
   display: none;
 }
 
-/* src/styles/history/summary.css */
+/* assets/styles/history/summary.css */
 .history-summary {
   display: grid;
   min-width: 0;
@@ -1248,7 +1248,7 @@ kbd {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-/* src/styles/history/task-memos.css */
+/* assets/styles/history/task-memos.css */
 .task-memo-card,
 .work-summary-card {
   width: 100%;
@@ -1346,7 +1346,7 @@ kbd {
   font-style: italic;
 }
 
-/* src/styles/history/work-summary.css */
+/* assets/styles/history/work-summary.css */
 .work-summary-card {
   gap: 10px;
 }
@@ -1474,7 +1474,7 @@ kbd {
   }
 }
 
-/* src/styles/history/editor.css */
+/* assets/styles/history/editor.css */
 .daily-memo-section {
   display: grid;
   gap: 5px;
@@ -1586,7 +1586,7 @@ kbd {
   width: 100%;
 }
 
-/* src/styles/confirmation.css */
+/* assets/styles/confirmation.css */
 .confirm-overlay {
   position: fixed;
   z-index: 20;
@@ -1634,7 +1634,7 @@ kbd {
   font-size: 0.82rem;
 }
 
-/* src/styles/history/rows.css */
+/* assets/styles/history/rows.css */
 .history-item {
   display: flex;
   width: 100%;
@@ -1670,7 +1670,7 @@ kbd {
   font-weight: 400;
 }
 
-/* src/styles/buttons.css */
+/* assets/styles/buttons.css */
 .primary-button {
   border: 1px solid var(--accent);
   color: #fff;
@@ -1695,7 +1695,7 @@ kbd {
   background: #973629;
 }
 
-/* src/styles/timer-status.css */
+/* assets/styles/timer-status.css */
 .is-measurement-finished {
   color: var(--danger);
 }
@@ -1729,7 +1729,7 @@ kbd {
   animation: countdown-border-attention 900ms ease-in-out infinite alternate, countdown-background-attention 900ms ease-in-out infinite alternate;
 }
 
-/* src/styles/popup.css */
+/* assets/styles/popup.css */
 .is-popup .app {
   width: 100%;
   margin: 0;
@@ -1834,7 +1834,7 @@ kbd {
   place-items: center;
 }
 
-/* src/styles/motion.css */
+/* assets/styles/motion.css */
 @keyframes flash {
   0% {
     opacity: 1;
@@ -1924,7 +1924,7 @@ kbd {
   }
 }
 
-/* src/styles/responsive.css */
+/* assets/styles/responsive.css */
 @media (max-width: 360px) {
   .app {
     padding: 10px;
@@ -1954,7 +1954,7 @@ kbd {
   }
 }
 
-/* src/styles/history/resumed.css */
+/* assets/styles/history/resumed.css */
 .timer-panel.is-history-resumed {
   border: 2px solid var(--break-text);
   box-shadow: 0 0 0 3px var(--break-bg), var(--shadow);
@@ -1989,7 +1989,7 @@ kbd {
   font-weight: 800;
 }
 
-/* src/styles/todos.css */
+/* assets/styles/todos.css */
 #todo-form {
   display: grid;
   gap: 12px;
@@ -2033,4 +2033,4 @@ kbd {
   color: var(--danger);
 }
 
-/* src/styles/index.css */
+/* assets/styles/index.css */

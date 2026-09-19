@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { state } from "../../src/core/state.js";
+import { state } from "../../assets/core/state.js";
 import {
   getElapsedMs,
   getDisplayMs,
   getCountdownOvertimeMs,
-} from "../../src/features/timer/clock.js";
+} from "../../assets/features/timer/clock.js";
 const initial = structuredClone(state);
 
 test("paused stopwatch and resumed countdown preserve their separate baselines", () => {

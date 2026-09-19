@@ -21,17 +21,17 @@
 ## ファイル構成
 
 - `index.html`：画面構成とブラウザの通信制限
-- `src/features/`：タイマー・履歴・Todo・設定・バックアップ・小窓の機能別処理
-- `src/storage/`・`src/shared/`・`src/ui/`：保存・共通計算・共通UI
-- `src/styles/`：機能別のCSS
-- `assets/`・`service-worker.js`：ビルドで生成する配信用ファイル
+- `assets/main.js`・`assets/features/`：ブラウザがES Modulesとして読み込む起動処理と機能別処理
+- `assets/storage/`・`assets/shared/`・`assets/ui/`：保存・共通計算・共通UI
+- `assets/styles/`：機能別のCSS
+- `assets/styles.css`・`service-worker.js`：ビルドで生成する配信用ファイル
 - `tests/`：保存・計測・画面操作の回帰テスト
 
 **各ファイルの役割、状態の管理、保存形式、開発・配信手順は [構成とプログラムの役割](docs/architecture.md) を参照してください。**
 
 ## 開発
 
-Node.js 22.13以降を使用します。編集は `src/` に行い、配信用ファイルはビルドで更新します。
+Node.js 22.13以降を使用します。JavaScriptと分割CSSは `assets/` 内を編集し、`npm run build`で結合CSSとService Workerを更新します。
 
 ```bash
 npm ci

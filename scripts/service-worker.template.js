@@ -1,12 +1,6 @@
+/* eslint-disable no-undef */
 const CACHE_NAME = "simple-timer-__CACHE_VERSION__";
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./assets/styles.css",
-  "./assets/app.js",
-  "./manifest.webmanifest",
-  "./icon.svg",
-];
+const APP_SHELL = __APP_SHELL__;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createTimerStorage } from "../../src/storage/shared-storage.js";
+import { createTimerStorage } from "../../assets/storage/shared-storage.js";
 class Storage {
   data = new Map();
   get length() {

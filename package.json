@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "eslint src scripts tests && node scripts/build.mjs --check",
+    "check": "eslint assets scripts tests && node scripts/build.mjs --check",
     "test": "node --test tests/unit/*.test.js",
     "test:browser": "playwright test",
-    "format": "prettier --write src scripts tests docs index.html README.md package.json",
+    "format": "prettier --write assets scripts tests docs index.html README.md package.json",
     "build:site": "npm run build && node scripts/site.mjs"
   },
   "devDependencies": {
