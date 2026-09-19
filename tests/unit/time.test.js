@@ -3,10 +3,25 @@ import assert from "node:assert/strict";
 import {
   calculateTimeRangeDuration,
   calculateWorkDurationMs,
+  compareHistoryRecordsByEndTimeDescending,
   formatDurationForUnit,
   formatTime,
   localDateKey,
 } from "../../src/shared/time.js";
+
+test("history records are ordered by latest edited end time first", () => {
+  const records = [
+    { taskName: "終了1時", createdAt: "2026-09-12T01:00:00+09:00" },
+    { taskName: "終了9時2分", createdAt: "2026-09-12T09:02:00+09:00" },
+    { taskName: "終了2時", createdAt: "2026-09-12T02:00:00+09:00" },
+    { taskName: "終了時刻なし" },
+  ];
+  records.sort(compareHistoryRecordsByEndTimeDescending);
+  assert.deepEqual(
+    records.map((record) => record.taskName),
+    ["終了9時2分", "終了2時", "終了1時", "終了時刻なし"],
+  );
+});
 
 test("duration formatting preserves countdown rounding and rounded minutes", () => {
   assert.equal(formatTime(59999), "00:00:59");

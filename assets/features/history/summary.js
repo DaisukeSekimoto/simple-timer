@@ -8,6 +8,7 @@ import {
 import { normalizeTaskName } from "../tasks/tasks.js";
 import {
   calculateWorkDurationMs,
+  compareHistoryRecordsByEndTimeDescending,
   formatDurationForUnit,
   formatHistoryDateLabel,
   formatHistoryTimeRange,
@@ -88,7 +89,7 @@ export function renderTaskMemoDialog() {
   elements.taskMemoList.replaceChildren();
   historySession.activeTaskMemoRecords
     .slice()
-    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+    .sort(compareHistoryRecordsByEndTimeDescending)
     .forEach((record) => {
       const item = document.createElement("article");
       item.className = "task-memo-item";

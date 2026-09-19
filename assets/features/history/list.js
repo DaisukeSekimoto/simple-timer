@@ -20,6 +20,7 @@ import {
 } from "../settings/settings.js";
 import {
   calculateWorkDurationMs,
+  compareHistoryRecordsByEndTimeDescending,
   formatHistoryTimeRange,
   localDateKey,
 } from "../../shared/time.js";
@@ -47,9 +48,9 @@ export function renderHistory() {
   ) {
     saveDailyMemoNow(false);
   }
-  const records = state.records.filter(
-    (record) => record.date === selectedDate,
-  );
+  const records = state.records
+    .filter((record) => record.date === selectedDate)
+    .sort(compareHistoryRecordsByEndTimeDescending);
   elements.historyDialog.classList.toggle("is-viewing-past", !isViewingToday);
   elements.historyDialog.classList.toggle(
     "is-editing-past",

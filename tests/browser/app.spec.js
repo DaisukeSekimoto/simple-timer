@@ -120,6 +120,34 @@ test("history manual add, edit, memo, summary and backup roundtrip", async ({
   expect(errors).toEqual([]);
 });
 
+test("daily history is displayed with the latest end time first", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-09-12T12:00:00+09:00"));
+  await openApp(page);
+  await page.locator("#history-button").click();
+
+  const addHistory = async (taskName, startTime, endTime) => {
+    await page.locator("#add-history-button").click();
+    await page.locator("#manual-task-input").fill(taskName);
+    await page.locator("#manual-start-time-input").fill(startTime);
+    await page.locator("#manual-end-time-input").fill(endTime);
+    await page
+      .locator("#add-history-form")
+      .evaluate((form) => form.requestSubmit());
+  };
+
+  await addHistory("終了1時", "00:00", "01:00");
+  await addHistory("終了9時2分", "08:02", "09:02");
+  await addHistory("終了2時", "00:30", "02:00");
+
+  await expect(page.locator("#history-list .history-item strong")).toHaveText([
+    "終了9時2分",
+    "終了2時",
+    "終了1時",
+  ]);
+});
+
 test("CSP blocks script connections and offline reload still starts", async ({
   page,
   context,

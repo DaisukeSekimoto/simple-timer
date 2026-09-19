@@ -61,6 +61,20 @@ export function formatHistoryTimeRange(record) {
     : `${formatHistoryClock(storedStartedAt)}～${formatHistoryClock(addedAt)}`;
 }
 
+export function compareHistoryRecordsByEndTimeDescending(
+  leftRecord,
+  rightRecord,
+) {
+  const leftEndTime = Date.parse(leftRecord.createdAt);
+  const rightEndTime = Date.parse(rightRecord.createdAt);
+  if (Number.isFinite(leftEndTime) && Number.isFinite(rightEndTime)) {
+    return rightEndTime - leftEndTime;
+  }
+  if (Number.isFinite(leftEndTime)) return -1;
+  if (Number.isFinite(rightEndTime)) return 1;
+  return 0;
+}
+
 export function calculateWorkDurationMs(clockIn, clockOut) {
   if (!/^\d{2}:\d{2}$/.test(clockIn) || !/^\d{2}:\d{2}$/.test(clockOut))
     return null;
