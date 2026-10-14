@@ -1,5 +1,5 @@
 /* eslint-disable no-undef */
-const CACHE_NAME = "simple-timer-136b8bc0d3f9";
+const CACHE_NAME = "simple-timer-362075a5c885";
 const APP_SHELL = [
   "./",
   "./index.html",

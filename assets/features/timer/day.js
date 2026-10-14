@@ -151,6 +151,7 @@ export function recordPreviousDayWork() {
           ? new Date(tab.firstStartedAt).toISOString()
           : undefined,
       createdAt: new Date(addedAt).toISOString(),
+      registeredAt: new Date().toISOString(),
     });
   });
   saveRecords();

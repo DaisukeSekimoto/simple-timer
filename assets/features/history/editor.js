@@ -388,6 +388,7 @@ export function addManualHistory(event) {
       durationMs,
       mode: "manual",
       createdAt: new Date(addedAt).toISOString(),
+      registeredAt: new Date().toISOString(),
     };
     if (timeRange) record.firstStartedAt = timeRange.startDate.toISOString();
     state.records.push(record);

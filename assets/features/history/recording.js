@@ -39,6 +39,7 @@ export function moveToNextTask() {
       state.firstStartedAt || addedAt - durationMs,
     ).toISOString(),
     createdAt: new Date(addedAt).toISOString(),
+    registeredAt: new Date().toISOString(),
   };
   if (resumedRecordIndex >= 0) {
     state.records[resumedRecordIndex] = {

@@ -92,14 +92,35 @@ export function resolveTaskName(name) {
 }
 
 export function recentTaskNames() {
-  const names = [];
-  [...state.records].reverse().forEach((record) => {
+  const latestTasks = new Map();
+  state.records.forEach((record, index) => {
     const taskName = normalizeTaskName(record.taskName);
-    if (taskName && !names.includes(taskName)) names.push(taskName);
+    if (!taskName) return;
+    const timestamps = [record.registeredAt, record.updatedAt, record.createdAt]
+      .map((value) => Date.parse(value))
+      .filter(Number.isFinite);
+    const usedAt = timestamps.length ? Math.max(...timestamps) : index;
+    const previous = latestTasks.get(taskName);
+    if (
+      !previous ||
+      usedAt > previous.usedAt ||
+      (usedAt === previous.usedAt && index > previous.index)
+    ) {
+      latestTasks.set(taskName, { taskName, usedAt, index });
+    }
   });
+  const names = [...latestTasks.values()]
+    .sort(
+      (left, right) =>
+        right.usedAt - left.usedAt || right.index - left.index,
+    )
+    .map((task) => task.taskName);
   const currentTaskName = normalizeTaskName(state.taskName);
-  if (currentTaskName && !names.includes(currentTaskName))
+  if (currentTaskName) {
+    const currentIndex = names.indexOf(currentTaskName);
+    if (currentIndex >= 0) names.splice(currentIndex, 1);
     names.unshift(currentTaskName);
+  }
   return names.slice(0, 10);
 }
 
