@@ -1,0 +1,25 @@
+{
+  "name": "simple-timer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "eslint assets scripts tests && node scripts/build.mjs --check",
+    "test": "node --test tests/unit/*.test.js",
+    "test:browser": "playwright test",
+    "format": "prettier --write assets scripts tests docs index.html README.md package.json",
+    "build:site": "npm run build && node scripts/site.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "esbuild": "0.28.2",
+    "eslint": "10.10.0",
+    "globals": "17.12.0",
+    "prettier": "3.9.6"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

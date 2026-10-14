@@ -406,6 +406,7 @@
           ? new Date(tab.firstStartedAt).toISOString()
           : undefined,
         createdAt: new Date(addedAt).toISOString(),
+        registeredAt: new Date().toISOString(),
       });
     });
     saveRecords();
@@ -2247,13 +2248,28 @@
   }
 
   function recentTaskNames() {
-    const names = [];
-    [...state.records].reverse().forEach((record) => {
+    const latestTasks = new Map();
+    state.records.forEach((record, index) => {
       const taskName = normalizeTaskName(record.taskName);
-      if (taskName && !names.includes(taskName)) names.push(taskName);
+      if (!taskName) return;
+      const timestamps = [record.registeredAt, record.updatedAt, record.createdAt]
+        .map((value) => Date.parse(value))
+        .filter(Number.isFinite);
+      const usedAt = timestamps.length ? Math.max(...timestamps) : index;
+      const previous = latestTasks.get(taskName);
+      if (!previous || usedAt > previous.usedAt || (usedAt === previous.usedAt && index > previous.index)) {
+        latestTasks.set(taskName, { taskName, usedAt, index });
+      }
     });
+    const names = [...latestTasks.values()]
+      .sort((left, right) => right.usedAt - left.usedAt || right.index - left.index)
+      .map((task) => task.taskName);
     const currentTaskName = normalizeTaskName(state.taskName);
-    if (currentTaskName && !names.includes(currentTaskName)) names.unshift(currentTaskName);
+    if (currentTaskName) {
+      const currentIndex = names.indexOf(currentTaskName);
+      if (currentIndex >= 0) names.splice(currentIndex, 1);
+      names.unshift(currentTaskName);
+    }
     return names.slice(0, 10);
   }
 
@@ -2333,6 +2349,7 @@
       mode: state.mode,
       firstStartedAt: new Date(state.firstStartedAt || addedAt - durationMs).toISOString(),
       createdAt: new Date(addedAt).toISOString(),
+      registeredAt: new Date().toISOString(),
     };
     if (resumedRecordIndex >= 0) {
       state.records[resumedRecordIndex] = {
@@ -2372,6 +2389,17 @@
     return Boolean(record && record.id && getResumedRecordIds().has(record.id));
   }
 
+  function compareHistoryRecordsByEndTime(leftRecord, rightRecord) {
+    const leftEndTime = Date.parse(leftRecord.createdAt);
+    const rightEndTime = Date.parse(rightRecord.createdAt);
+    if (Number.isFinite(leftEndTime) && Number.isFinite(rightEndTime)) {
+      return leftEndTime - rightEndTime;
+    }
+    if (Number.isFinite(leftEndTime)) return -1;
+    if (Number.isFinite(rightEndTime)) return 1;
+    return 0;
+  }
+
   function renderHistory() {
     const selectedDate = elements.historyDate.value;
     elements.historyDatePickerField.hidden = !isPastHistoryEditUnlocked();
@@ -2386,7 +2414,9 @@
     if (dailyMemoEditingDate && dailyMemoEditingDate !== selectedDate && dailyMemoDirty) {
       saveDailyMemoNow(false);
     }
-    const records = state.records.filter((record) => record.date === selectedDate);
+    const records = state.records
+      .filter((record) => record.date === selectedDate)
+      .sort(compareHistoryRecordsByEndTime);
     elements.historyDialog.classList.toggle("is-viewing-past", !isViewingToday);
     elements.historyDialog.classList.toggle("is-editing-past", !isViewingToday && canEdit);
     elements.historyDateContext.hidden = isViewingToday;
@@ -2556,7 +2586,7 @@
     elements.taskMemoTotal.textContent = `合計 ${totalText}`;
     elements.taskMemoTotal.setAttribute("aria-label", `合計 ${totalText}。クリックして時間表記を切り替え`);
     elements.taskMemoList.replaceChildren();
-    activeTaskMemoRecords.slice().sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))).forEach((record) => {
+    activeTaskMemoRecords.slice().sort(compareHistoryRecordsByEndTime).forEach((record) => {
       const item = document.createElement("article");
       item.className = "task-memo-item";
       const meta = document.createElement("strong");
@@ -3192,6 +3222,7 @@
         durationMs,
         mode: "manual",
         createdAt: new Date(addedAt).toISOString(),
+        registeredAt: new Date().toISOString(),
       };
       if (timeRange) record.firstStartedAt = timeRange.startDate.toISOString();
       state.records.push(record);
